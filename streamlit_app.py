@@ -40,6 +40,7 @@ with st.form("Schedule", clear_on_submit=True):
 
     # Número do Estudante
     studentNumber = st.text_input(translate(language, "Your Student Number", "Votre No étudiant"))
+    monday = st.multiselect(translate(language, 'Monday', 'Lundi'), times)
     tuesday = st.multiselect(translate(language, 'Tuesday', 'Mardi'), times)
     wednesday = st.multiselect(translate(language, 'Wednesday', 'Mercredi'), times)                
     thursday = st.multiselect(translate(language, 'Thursday', 'Jeudi'), times)             
@@ -54,6 +55,7 @@ with st.form("Schedule", clear_on_submit=True):
                 "studentID": studentNumber,
                 "info": {
                     "name": name,
+                    "monday": monday,
                     "tuesday": tuesday,
                     "wednesday": wednesday,
                     "thursday": thursday,
