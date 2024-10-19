@@ -1,2 +1,7 @@
-streamlit
-firebase-admin
+dateparser==1.2.0
+firebase_admin==6.5.0
+matplotlib==3.9.2
+pandas==2.2.3
+streamlit==1.38.0
+streamlit_authenticator==0.4.1
+streamlit_calendar==1.2.0
