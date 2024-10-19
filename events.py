@@ -1,22 +1,43 @@
-import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, firestore
-import datetime
-import dateparser
-from streamlit_calendar import calendar
+import streamlit as st
 import streamlit_authenticator as stauth
+from firebase_admin import credentials, firestore
 from streamlit_authenticator import LoginError
-from shared import crud
-import admin 
+
+import admin
 import students
-
-import yaml
-from yaml.loader import SafeLoader
-
+from shared import crud
 
 # Authentication Stuff
-with open('config.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+# with open('config.yaml') as file:
+#     config = yaml.load(file, Loader=SafeLoader)
+
+# Interfaz de usuario
+st.title("🥳Student Services Events APP📅")
+
+# Inicializar Firebase
+if not firebase_admin._apps:
+    cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
+    firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
+# main_collection = db.collection("credentials")
+# main_collection_doc_ref = main_collection.document("credentials")
+# event_collection = main_collection_doc_ref.collection("students")
+# doc_ref = event_collection.document(studentNumber)
+# main_collection_doc_ref.set(config)
+
+cred_ref = db.collection('credentials')
+creds = cred_ref.stream()
+
+config = {}
+
+for doc in creds:
+    doc_dict = doc.to_dict()
+    config[doc.id] = doc_dict
+
+config = config["credentials"]
 
 # Pre-hashing all plain text passwords once
 stauth.Hasher.hash_passwords(config['credentials'])
@@ -28,29 +49,42 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
-# Interfaz de usuario
-st.title("🥳Student Services Events APP📅")
+# CREATE USER FORM
+def create_user_form():
+    try:
+        email_of_registered_user, \
+        username_of_registered_user, \
+        name_of_registered_user = authenticator.register_user(roles=["viewer"]) # name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
+        if email_of_registered_user:
+            st.success('User registered successfully')
 
-try:
-    authenticator.login()
-except LoginError as e:
-    st.error(e)
+        crud.write_credentials_config_firestore(db, config)
+        
+    except Exception as e:
+        st.error(e)
 
-# Inicializar Firebase
-if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
-    firebase_admin.initialize_app(cred)
+container = st.container()
 
-db = firestore.client()
+# LOGIN FORM
+with container.empty():
+    try:
+        authenticator.login()
+    except LoginError as e:
+        st.error(e)
 
 # Serving each site depending on the user 
 if st.session_state['authentication_status']:
-    authenticator.logout()
+    with st.sidebar:
+        authenticator.logout()
+        st.subheader(f"Logged in as {st.session_state["username"]}")
     if st.session_state["username"] == "emile":
-        print(st.session_state["roles"])
         admin.render(db)
     if st.session_state["roles"] == ["viewer"]:
-        students.render()
+        students.render(db)
+else:
+    if st.sidebar.button("Create New User"):
+        with container.empty():
+            create_user_form()
 
 
 
