@@ -7,9 +7,45 @@ from firebase_admin import firestore
 
 import event_details
 from render_calendar import render_calendar
-from shared import crud
+from shared import crud, pdf_report
+from io import StringIO
+from time import sleep
 
 # st.set_page_config(layout="wide")
+
+import base64
+
+# Function to display PDF
+def display_pdf(file_path):
+    # Read the PDF file as bytes
+    with open(file_path, "rb") as f:
+        pdf_bytes = f.read()
+
+    # Encode the PDF bytes in base64
+    pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+
+    # Embed the PDF in the Streamlit app using HTML and JavaScript
+    pdf_display = f"""
+    <style>
+    .pdf-container {{
+        position: relative;
+        width: 700px;
+        height: 1000px;
+    }}
+    .pdf-container iframe {{
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: none;
+    }}
+    </style>
+    <div class="pdf-container">
+        <iframe src="data:application/pdf;base64,{pdf_base64}" type="application/pdf"></iframe>
+    </div>
+    """
+    st.markdown(pdf_display, unsafe_allow_html=True)
 
 # Mostrar eventos
 def mostrar_eventos(db):
@@ -59,10 +95,17 @@ def render(db:firestore.client):
 
     eventos = crud.obtener_eventos(db)
 
-    tab_all_events, tab_event_details, tab_create_events, tab_delete_event = st.tabs(["All Events", 
-                                                                                      "Event Details", 
-                                                                                      "Create Event", 
-                                                                                      "Delete Event"])
+    tab_all_events, \
+        tab_event_details, \
+            tab_create_events, \
+                tab_delete_event, \
+                     tab_attendance, \
+                         tab_attendance_df_builder = st.tabs(["All Events", 
+                                                            "Event Details", 
+                                                            "Create Event", 
+                                                            "Delete Event",
+                                                            "Check Attendance",
+                                                            "Attendance DF Builder"])
 
     #%% ALL EVENTS TAB
     with tab_all_events:
@@ -87,7 +130,7 @@ def render(db:firestore.client):
         if col1.button("Modify"):
             modificar_evento(db, event_name)
 
-        event_details.render_details(event_name)
+        event_details.render_details(db, event_name)
 
     #%% CREATE EVENT TAB
     with tab_create_events:
@@ -108,3 +151,74 @@ def render(db:firestore.client):
             if st.form_submit_button("Delete Event"):
                 eliminar_evento(db, event_name)
             # Función para eliminar un evento
+
+    #%% ATENDANCE TAB
+    with tab_attendance:
+        st.header("Attendance")
+        event_name = st.selectbox(label="Select the event", options=event_list)
+        event_days = crud.get_event_days(db, event_name)
+        day_selected = st.selectbox(label="Select the Day", options=event_days.keys())
+        hour_selected = st.selectbox(label="Select the hour", options=event_days[day_selected])
+
+        data = crud.get_attendance_doc(db, event_name)
+        df = pd.DataFrame(data)
+
+        with st.form("Attendance checking"):
+
+            try:
+
+                df_filtered = pd.read_json(StringIO(df.loc[hour_selected].loc[day_selected]))
+
+                df_editor = st.data_editor(df_filtered,
+                                           column_config={
+                                               "name": st.column_config.Column(disabled=True),
+                                               "student_id": st.column_config.Column(disabled=True),
+                                           },
+                                           hide_index=True)
+
+                if st.form_submit_button("Confirm attendance"):
+
+
+                    data[day_selected][hour_selected] = df_editor.to_json()
+                    
+                    if crud.update_attendance_doc(db, event_name, data):
+
+                        st.success("Attendance succesfully written in Firestore")
+                        st.balloons()
+
+                        sleep(2)
+
+                        st.rerun()
+            except KeyError:
+                st.warning("No schedule yet")
+                if st.form_submit_button("Nothing to Confirm yet", disabled=True):
+                    pass
+            
+        if st.button("Create PDF"):
+            pdf_report.create_simple_pdf()
+            pdf_report.create_complex_pdf(df.values.tolist())
+
+    #%% ATENDANCE TAB
+    with tab_attendance_df_builder:
+        st.header("Attendance DF Builder")
+        event_name = st.selectbox(label="Select the event", options=event_list, key="Select the event 1")
+        event_days = crud.get_event_days(db, event_name)
+
+        with st.form("Event Attendance Confirmation"):
+
+            if st.form_submit_button("Confirm attendance submition"):
+                if crud.create_attendance_doc(db, event_name):
+                    st.success("Attendance db written on Firestore")
+                
+                df = pd.DataFrame(crud.get_attendance_doc(db, event_name))
+
+                df.sort_index(inplace=True)
+
+                st.dataframe(df)
+        
+        
+        display_pdf("complex_report.pdf")
+
+        # st.data_editor(event_attendance_dict)
+        # st.dataframe(event_attendance_dict)
+        # st.write(event_attendance_dict)
