@@ -27,10 +27,8 @@ def render(db):
     for event in events_dict:
         if "open" in event.keys():
             if event["open"]:
-                print(event)
-                events_list.append(event["nombre"])
 
-    print(events_list)
+                events_list.append(event["nombre"])
 
     render_calendar(events_dict)
 
@@ -46,14 +44,6 @@ def render(db):
         # Event Selector:
         
         event_selected = st.selectbox(label="Events", options=events_list)
-
-        evento = crud.get_event_by_name(db, event_selected)
-
-        start_date = dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
-
-        end_date = start_date + datetime.timedelta(weeks=evento["duracion"])
-
-        delta = end_date - start_date
 
         # Disponibility
         st.subheader(translate(language, 
@@ -72,14 +62,14 @@ def render(db):
 
             # Days adjusteds:
 
+            event_days = crud.get_event_days(db, event_selected)
+
             days = {}
 
-            for day in range(delta.days):
-                date = start_date + datetime.timedelta(days=day)
-                day_name = date.strftime('%A')
-                day_number = date.day
-                days[f'{day_name}_{day_number}'] = st.multiselect(
-                    translate(language, f'{day_name}_{day_number}', f'{day_name}_{day_number}'), times)
+            for day in event_days.keys():
+
+                days[day] = st.multiselect(
+                    translate(language, day, day), times)
                 
 
             # if st.button(translate(language, 'Submit Availability', 'Envoyer la Disponibilité')):

@@ -18,7 +18,7 @@ def render_calendar(eventos):
     for evento in eventos:
         start_date = dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
         end_date = start_date + datetime.timedelta(weeks=evento["duracion"])
-        print(str(dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})))
+        # print(str(dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})))
         calendar_events.append({
             "title": evento["nombre"],
             "start": str(start_date),

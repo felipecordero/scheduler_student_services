@@ -1,48 +1,23 @@
-import firebase_admin
 import matplotlib
 import pandas as pd
 import streamlit as st
-from firebase_admin import credentials, firestore
+from shared import crud
 
 # st.set_page_config(layout="wide")
 
 # cmap = plt.cm.get_cmap('RdYlGn')
 
-def init_firestore():
-
-    # Inicializar la aplicación de Firebase
-    cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
-    if not firebase_admin._apps:
-        firebase_admin.initialize_app(cred)
-    return firestore.client()
-
-db = init_firestore()
-
-# Función para recuperar todos los documentos de una colección
-def get_students_registered(collection_name):
-    collection_ref = db.collection("eventos").document(collection_name).collection("students")
-    # collection_ref.
-    documents = collection_ref.stream()
-
-    # Convertir los documentos a una lista de diccionarios
-    collection_data = []
-    for doc in documents:
-        doc_dict = doc.to_dict()
-        doc_dict['student_id'] = doc.id  # Agregar el ID del documento al diccionario
-        collection_data.append(doc_dict)
-    return collection_data
-
 # Method for rendering the details for the specific event
-def render_details(collection_name):
+def render_details(db, event_name):
 
     # # Ejemplo de uso
     # collection_name = 'week_sept_3_6'
-    data = get_students_registered(collection_name)
+    data = crud.get_students_registered(db, event_name)
 
     # Crear la lista de días con gente registrada
     if data:
         days = list(data[0].keys())
-        print(days)
+
         days.remove("name")
         days.remove("student_id")
 
