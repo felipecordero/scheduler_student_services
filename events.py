@@ -12,6 +12,8 @@ from shared import crud
 # with open('config.yaml') as file:
 #     config = yaml.load(file, Loader=SafeLoader)
 
+# st.markdown(" <style> div[class^='element-container'] { padding-top: -10rem; } </style> ", unsafe_allow_html=True)
+
 # Interfaz de usuario
 st.title("🥳Student Services Events APP📅")
 
@@ -63,15 +65,6 @@ def create_user_form():
     except Exception as e:
         st.error(e)
 
-container = st.container()
-
-# LOGIN FORM
-with container.empty():
-    try:
-        authenticator.login()
-    except LoginError as e:
-        st.error(e)
-
 # Serving each site depending on the user 
 if st.session_state['authentication_status']:
     with st.sidebar:
@@ -82,9 +75,19 @@ if st.session_state['authentication_status']:
     if st.session_state["roles"] == ["viewer"]:
         students.render(db)
 else:
-    if st.sidebar.button("Create New User"):
-        with container.empty():
-            create_user_form()
+    tab1, tab2 = st.tabs(["Login", "Register"])
+
+    # LOGIN FORM
+    with tab1:
+        try:
+            authenticator.login()
+        except LoginError as e:
+            st.error(e)
+    with tab2:
+        create_user_form()
+    # if st.sidebar.button("Create New User"):
+    #     with container:
+            
 
 
 
