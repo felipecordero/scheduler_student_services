@@ -24,22 +24,7 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# main_collection = db.collection("credentials")
-# main_collection_doc_ref = main_collection.document("credentials")
-# event_collection = main_collection_doc_ref.collection("students")
-# doc_ref = event_collection.document(studentNumber)
-# main_collection_doc_ref.set(config)
-
-cred_ref = db.collection('credentials')
-creds = cred_ref.stream()
-
-config = {}
-
-for doc in creds:
-    doc_dict = doc.to_dict()
-    config[doc.id] = doc_dict
-
-config = config["credentials"]
+config = crud.get_credentials(db)
 
 # Pre-hashing all plain text passwords once
 stauth.Hasher.hash_passwords(config['credentials'])
@@ -51,12 +36,34 @@ authenticator = stauth.Authenticate(
     config['cookie']['expiry_days']
 )
 
+# {
+#     'Form name':'Register new student', 
+#     'Email':'Email', 
+#     'Username':'Student Number', 
+#     'Password':'Password', 
+#     'Repeat password':'Repeat password', 
+#     'Password hint':'Password hint', 
+#     'Captcha':'Captcha', 
+#     'Register':'Register'
+# }
+
 # CREATE USER FORM
 def create_user_form():
+    fields = {
+        'Form name':'Register new student', 
+        'Email':'Email', 
+        'Username':'Student Number', 
+        'Password':'Password', 
+        'Repeat password':'Repeat password', 
+        'Password hint':'Password hint', 
+        'Captcha':'Captcha', 
+        'Register':'Register'
+    }
     try:
         email_of_registered_user, \
-        username_of_registered_user, \
-        name_of_registered_user = authenticator.register_user(roles=["viewer"]) # name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
+        student_number, \
+        name_of_registered_user = authenticator.register_user( roles=["viewer"],
+                                                              fields=fields) # name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
         if email_of_registered_user:
             st.success('User registered successfully')
 
@@ -75,16 +82,37 @@ if st.session_state['authentication_status']:
     if st.session_state["roles"] == ["viewer"]:
         students.render(db)
 else:
-    tab1, tab2 = st.tabs(["Login", "Register"])
+    tab1, tab2, tab3 = st.tabs(["Login", "Register", "Forgot Password"])
 
     # LOGIN FORM
     with tab1:
+        fields_login = {
+            'Form name':'Login', 
+            'Username':'Student Number', 
+            'Password':'Password', 
+            'Login':'Login', 
+            'Captcha':'Captcha'
+            }
         try:
-            authenticator.login()
+            authenticator.login(fields=fields_login)
         except LoginError as e:
             st.error(e)
     with tab2:
         create_user_form()
+    
+    with tab3:
+        try:
+            username_of_forgotten_password, \
+            email_of_forgotten_password, \
+            new_random_password = authenticator.forgot_password()
+            if username_of_forgotten_password:
+                print(new_random_password)
+                st.success('New password to be sent securely')
+                # The developer should securely transfer the new password to the user.
+            elif not username_of_forgotten_password:
+                st.error('Username not found')
+        except Exception as e:
+            st.error(e)
     # if st.sidebar.button("Create New User"):
     #     with container:
             
