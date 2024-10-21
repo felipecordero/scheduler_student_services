@@ -67,7 +67,7 @@ def create_user_form():
         if email_of_registered_user:
             st.success('User registered successfully')
 
-        crud.write_credentials_config_firestore(db, config)
+            crud.write_credentials_config_firestore(db, config)
         
     except Exception as e:
         st.error(e)
