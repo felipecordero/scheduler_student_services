@@ -1,4 +1,8 @@
+# st.set_page_config(layout="wide")
+import base64
 import datetime
+from io import StringIO
+from time import sleep
 
 import dateparser
 import pandas as pd
@@ -8,12 +12,7 @@ from firebase_admin import firestore
 import event_details
 from render_calendar import render_calendar
 from shared import crud, pdf_report
-from io import StringIO
-from time import sleep
 
-# st.set_page_config(layout="wide")
-
-import base64
 
 # Function to display PDF
 def display_pdf(file_path):
@@ -65,23 +64,31 @@ def confirm_new_event(db, nombre, fecha_inicio, duracion):
         crud.crear_evento(db, nombre, fecha_inicio, duracion)
         st.success("Event Created")
         st.balloons()
-        # st.rerun()
+        sleep(2)
+        st.rerun()
 
 #%% Dialog for modifying an event
 @st.dialog("Modify Event")
 def modificar_evento(db, evento_id):
     with st.form("modify event", clear_on_submit=True):
         if evento_id:
-            evento = db.collection('eventos').document(evento_id).get()
-            if evento.exists:
-                evento_data = evento.to_dict()
-                nuevo_nombre = st.text_input("New name of the event", evento_data['nombre'])
-                nueva_fecha_inicio = st.date_input("New start date", dateparser.parse(evento_data['fecha_inicio']))
-                nueva_duracion = st.number_input("New duration (in weeks)", min_value=1, max_value=52, value=evento_data['duracion'])
+            evento = db.collection('eventos').document(evento_id).get().to_dict()
+            if evento:
+                try:
+                    start_date = dateparser.parse(evento['fecha_inicio'])
+                except TypeError:
+                    start_date = evento['fecha_inicio'].date()
+                nuevo_nombre = st.text_input("New name of the event", evento['nombre'])
+                nueva_fecha_inicio = st.date_input("New start date", start_date)
+                nueva_duracion = st.number_input("New duration (in weeks)", min_value=1, max_value=52, value=evento['duracion'])
                 if st.form_submit_button("Modify Event"):
-                    crud.modificar_evento(db, evento_id, nuevo_nombre, nueva_fecha_inicio.strftime("%d/%m/%Y"), nueva_duracion)
-            # else:
-            #     st.write("ID de evento no válido.")
+                    if crud.modificar_evento(db, evento_id, nuevo_nombre, nueva_fecha_inicio.strftime("%d/%m/%Y"), nueva_duracion):
+                        st.success("Event Modified!")
+                        st.balloons()
+                        sleep(2)
+                        st.rerun()
+        else:
+            st.write("ID de evento no válido.")
 
 #%% Dialog for deleting an event
 @st.dialog("Delete Event")
@@ -156,14 +163,19 @@ def render(db:firestore.client):
     with tab_attendance:
         st.header("Attendance")
         event_name = st.selectbox(label="Select the event", options=event_list)
-        event_days = crud.get_event_days(db, event_name)
-        day_selected = st.selectbox(label="Select the Day", options=event_days.keys())
+        event_days = crud.get_event_days_from_db(db, event_name)
+        day_selected = st.selectbox(label="Select the Day", options=sorted(event_days.keys()))
         hour_selected = st.selectbox(label="Select the hour", options=event_days[day_selected])
 
         data = crud.get_attendance_doc(db, event_name)
         df = pd.DataFrame(data)
+        df.sort_index(inplace=True)
+
+        # st.write(df)
 
         with st.form("Attendance checking"):
+
+            st.subheader("Attendance Cheching")
 
             try:
 
@@ -193,16 +205,36 @@ def render(db:firestore.client):
                 st.warning("No schedule yet")
                 if st.form_submit_button("Nothing to Confirm yet", disabled=True):
                     pass
-            
-        if st.button("Create PDF"):
-            pdf_report.create_simple_pdf()
-            pdf_report.create_complex_pdf(df.values.tolist())
+        
+        # Report Generation
+        st.header("Report Generation")
 
-    #%% ATENDANCE TAB
+        # student_list = crud.get_attendance_doc(db, event_name)
+        students = crud.get_students_registered(db, event_name)
+
+        student_names = {}
+
+        for student_id, student_data in students.items():
+            student_names[student_data["name"]] = student_id
+
+        selected_student = st.selectbox("Student: ", options=student_names.keys())
+
+        # student = st.selectbox("Select Student", options=)
+
+        if st.button("Create PDF Report"):
+
+            st.download_button(
+                label = "Download PDF",
+                data = pdf_report.create_student_attendance_report(db= db, student_id = student_names[selected_student], event=event_name),
+                file_name="report.pdf",
+                mime="application/pdf"
+                )
+
+    #%% ATENDANCE DB BUILDER TAB
     with tab_attendance_df_builder:
         st.header("Attendance DF Builder")
         event_name = st.selectbox(label="Select the event", options=event_list, key="Select the event 1")
-        event_days = crud.get_event_days(db, event_name)
+        # event_days = crud.get_event_days_from_db(db, event_name)
 
         with st.form("Event Attendance Confirmation"):
 
