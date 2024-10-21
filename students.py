@@ -88,12 +88,7 @@ def render(db):
                 #     "studentID": username,
                 #     "info": info
                 # }
-                main_collection = db.collection("eventos")
-                main_collection_doc_ref = main_collection.document(event_selected)
-                event_collection = main_collection_doc_ref.collection("students")
-                doc_ref = event_collection.document(username)
-                # doc_ref = event_collection.document(studentNumber)
-                doc_ref.set(info)
+                crud.write_availabilty(db, event_selected, username)
 
                 st.success(translate(language, 
                                         'Availability submitted!', 
