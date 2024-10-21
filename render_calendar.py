@@ -16,13 +16,18 @@ def render_calendar(eventos):
     calendar_events = []
     
     for evento in eventos:
-        start_date = dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
+        try:
+            start_date = dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
+        except TypeError:
+            start_date = evento["fecha_inicio"].date()
         end_date = start_date + datetime.timedelta(weeks=evento["duracion"])
         # print(str(dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})))
         calendar_events.append({
             "title": evento["nombre"],
-            "start": str(start_date),
-            "end": str(end_date),
+            # "start": str(start_date),
+            # "end": str(end_date),
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat()
         })
 
     mode = st.selectbox(

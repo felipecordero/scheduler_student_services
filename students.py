@@ -55,18 +55,16 @@ def render(db):
 
         with st.form("Schedule", clear_on_submit=True):
             # User Name
-            name = st.text_input(translate(language, "Your Name", "Votre Nom"))
+            # name = st.text_input(translate(language, "Your Name", "Votre Nom"))
 
             # Student Number
-            studentNumber = st.text_input(translate(language, "Your Student Number", "Votre No étudiant"))
+            # studentNumber = st.text_input(translate(language, "Your Student Number", "Votre No étudiant"))
 
             # Days adjusteds:
 
-            event_days = crud.get_event_days(db, event_selected)
+            days = crud.get_event_days_from_db(db, event_selected)
 
-            days = {}
-
-            for day in event_days.keys():
+            for day, times in sorted(days.items()):
 
                 days[day] = st.multiselect(
                     translate(language, day, day), times)
@@ -76,24 +74,27 @@ def render(db):
             if st.form_submit_button(translate(language, 
                                                'Submit Availability', 
                                                'Envoyer la Disponibilité')):
-                if not name or not studentNumber:
-                    st.error(translate(language, 
-                                       "Please provide your Name and Student Number.", 
-                                       "Veuillez fournir votre Nom et Numéro d'étudiant."))
-                else:
-                    info = days
-                    info["name"] = name
-                    data = {
-                        ""
-                        "studentID": studentNumber,
-                        "info": info
-                    }
-                    main_collection = db.collection("eventos")
-                    main_collection_doc_ref = main_collection.document(event_selected)
-                    event_collection = main_collection_doc_ref.collection("students")
-                    doc_ref = event_collection.document(studentNumber)
-                    doc_ref.set(data["info"])
+                # if not name or not studentNumber:
+                #     st.error(translate(language, 
+                #                        "Please provide your Name and Student Number.", 
+                #                        "Veuillez fournir votre Nom et Numéro d'étudiant."))
+                # else:
+                name = st.session_state["name"]
+                username = st.session_state["username"]
+                info = days
+                info["name"] = name
+                # data = {
+                #     # "studentID": studentNumber,
+                #     "studentID": username,
+                #     "info": info
+                # }
+                main_collection = db.collection("eventos")
+                main_collection_doc_ref = main_collection.document(event_selected)
+                event_collection = main_collection_doc_ref.collection("students")
+                doc_ref = event_collection.document(username)
+                # doc_ref = event_collection.document(studentNumber)
+                doc_ref.set(info)
 
-                    st.success(translate(language, 
-                                         'Availability submitted!', 
-                                         'Disponibilité envoyée!'))
+                st.success(translate(language, 
+                                        'Availability submitted!', 
+                                        'Disponibilité envoyée!'))

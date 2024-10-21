@@ -7,6 +7,10 @@ from shared import crud
 
 # cmap = plt.cm.get_cmap('RdYlGn')
 
+# Function to convert list elements to strings with newline characters
+def list_to_string(lst):
+    return '<br>'.join(lst) if isinstance(lst, list) else lst
+
 # Method for rendering the details for the specific event
 def render_details(db, event_name):
 
@@ -14,16 +18,24 @@ def render_details(db, event_name):
     # collection_name = 'week_sept_3_6'
     data = crud.get_students_registered(db, event_name)
 
+    [print(key, info) for key, info in data.items()]
+
     # Crear la lista de días con gente registrada
     if data:
-        days = list(data[0].keys())
+        days = []
+        for student in data.values():
+            print(student.keys())
+            days.extend(list(student.keys()))
+        # days = list(data[0].keys())
 
-        days.remove("name")
-        days.remove("student_id")
+            days.remove("name")
+        # days.remove("student_id")
+
+        days = list(set(days))
 
         new_data = []
 
-        for student in data:
+        for student in data.values():
             for day in days:
                 for hour in student[day]:
                     new_data.append({day: student["name"], "hour": hour}) 
@@ -42,9 +54,12 @@ def render_details(db, event_name):
 
         cmap = matplotlib.colormaps["RdYlGn"]
 
-        df_count = df.groupby("hour").count().reset_index().style.background_gradient(cmap=cmap,vmin=0,vmax=5)
+        df_count = df.groupby("hour").count().reset_index()
+        df_count.set_index(["hour"])
+        df_count = df_count.style.background_gradient(cmap=cmap,vmin=0,vmax=5)
 
         new_df = df.groupby("hour")[df_days].agg(lambda x: '<br>'.join(x.dropna().astype(str))).reset_index()
+        new_df.set_index("hour", inplace=True)
 
         tab1, tab2 = st.tabs(["All Students", "Specific Student"])
 
@@ -52,7 +67,7 @@ def render_details(db, event_name):
 
         especific_student = []
         especific_students_days = []
-        for student in data:
+        for student in data.values():
             if student["name"] == name:
                 for day in days:
                     if len(student[day]) > 0:
@@ -74,6 +89,16 @@ def render_details(db, event_name):
 
         # Display the DataFrame in Streamlit with HTML line breaks rendered correctly
         tab1.write(new_df.to_html(escape=False, index=True), unsafe_allow_html=True)
+
+        tab1.dataframe(df.groupby("hour")[df_days].agg(lambda x: list(x.dropna())).reset_index().map(list_to_string))
+
+        new_df = df.groupby("hour")[df_days].agg(lambda x: list(x.dropna())).reset_index()
+
+        new_df.set_index(["hour"], inplace=True)
+
+        tab1.write(new_df)
+
+        tab1.write(df.groupby("hour")[df_days].agg(lambda x: '\n'.join(x.dropna().astype(str))).reset_index())
 
         # tab1.write(new_df)
 
