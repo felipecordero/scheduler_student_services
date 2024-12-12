@@ -1,69 +1,117 @@
-import streamlit as st
-
+import admin
 import firebase_admin
-from firebase_admin import credentials
-from firebase_admin import firestore
+import shared.forms
+import streamlit as st
+import students
+import supervisors
+from firebase_admin import credentials, firestore
+from shared import crud
 
-def init_firestore():
-    # Inicializar la aplicación de Firebase
+import extra_streamlit_components as stx
+
+from time import sleep
+
+st.set_page_config(layout="wide",
+                   page_title="Student Services Scheduler",
+                   page_icon="📅",
+                   menu_items={
+                            'Get Help': 'https://felipecordero.com',
+                            'About': "## With love by Felipe Cordero. **Supporting** Student Services Team!"
+                        })
+
+# Reducing whitespace on the top of the page
+st.markdown("""
+<style>
+
+.block-container
+{
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+    margin-top: 0rem;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# Interfaz de usuario
+
+col1, col2, col3, _, col_logo,  = st.columns((1.5, 0.4, 0.3, 1.5, 0.5), vertical_alignment="center")
+col1.subheader("📅 Student Services Events App")
+login_placeholder = col2.empty()
+col_logo.image("logos/logo_college.png")
+
+# Inicializar Firebase
+if not firebase_admin._apps:
     cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
-    if not firebase_admin._apps:
-        firebase_admin.initialize_app(cred)
-    return firestore.client()
+    firebase_admin.initialize_app(cred)
 
-db = init_firestore()
+db = firestore.client()
 
-# Função para traduzir
-def translate(language, en_text, fr_text):
-    if language == 'English':
-        return en_text
-    else:
-        return fr_text
+container = st.container()
 
-# Título da Aplicação
-st.title('Scheduler For Student Services')
+# # try to login from cookies
+# cookie_manager = stx.CookieManager()
 
-# Seleção de Idioma
-language = st.selectbox('Choose your language / Choisissez votre langue', ['English', 'Français'])
+# if "valid_user" not in st.session_state:
+#     # print(st.session_state)
+#     username = cookie_manager.get(cookie="user")
+#     # sleep(0.5)
+#     password = cookie_manager.get(cookie="pass")
+#     # sleep(0.5)
+#     # print(username, password)
+#     users = crud.get_all_users(db)
+#     for user in users:
+#         if user["user"] == username:
+#             if user["password"] == str(password):
+#                 st.session_state.valid_user = True
+#                 st.session_state.username = username
+#                 st.rerun()
 
-times = ['08:00-09:00', '09:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '13:00-14:00', '14:00-15:00', '15:00-16:00', '16:00-17:00']
+# Serving each site depending on the user
+if "valid_user" in st.session_state:
+    if "valid_user":
+        if "username" in st.session_state:
+            user_info = crud.get_user(db, st.session_state.username)
+            logout_button = col3.button("logout", type="primary")
 
-# Disponibilidade
-st.subheader(translate(language, "Select your Availability", "Sélectionnez votre Disponibilité"))
-st.write('Please select all available days and times / Veuillez sélectionner tous les jours et heures disponibles')
+            if logout_button:
+                del st.session_state.username
+                del st.session_state.valid_user
+                st.rerun()
 
-# st.dataframe(data=db)
+            if "admin" in user_info["role"]:
+                with container:
+                    admin.render(db, login_placeholder)
 
-with st.form("Schedule", clear_on_submit=True):
-    # Nome do Usuário
-    name = st.text_input(translate(language, "Your Name", "Votre Nom"))
+            elif "supervisor" in user_info["role"]:
+                with container:
+                    supervisors.render(db, login_placeholder)
 
-    # Número do Estudante
-    studentNumber = st.text_input(translate(language, "Your Student Number", "Votre No étudiant"))
-    monday = st.multiselect(translate(language, 'Monday', 'Lundi'), times)
-    tuesday = st.multiselect(translate(language, 'Tuesday', 'Mardi'), times)
-    wednesday = st.multiselect(translate(language, 'Wednesday', 'Mercredi'), times)                
-    thursday = st.multiselect(translate(language, 'Thursday', 'Jeudi'), times)             
-    friday = st.multiselect(translate(language, 'Friday', 'Vendredi'), times)
+            elif "student" in user_info["role"]:
+                with container:
+                    students.render(db, login_placeholder)
 
-    # if st.button(translate(language, 'Submit Availability', 'Envoyer la Disponibilité')):
-    if st.form_submit_button(translate(language, 'Submit Availability', 'Envoyer la Disponibilité')):
-        if not name or not studentNumber:
-            st.error(translate(language, "Please provide your Name and Student Number.", "Veuillez fournir votre Nom et Numéro d'étudiant."))
         else:
-            data = {
-                "studentID": studentNumber,
-                "info": {
-                    "name": name,
-                    "monday": monday,
-                    "tuesday": tuesday,
-                    "wednesday": wednesday,
-                    "thursday": thursday,
-                    "friday": friday
-                }
-            }
+            st.info("Please, login or register")
+    else:
+        st.info("Please, login or register")
 
-            doc_ref = db.collection("scheduler_student_services").document(studentNumber)
-            doc_ref.set(data["info"])
+else:
+    tab1, tab2, tab3 = st.tabs(["Login", "Register", "Forgot Password"])
 
-            st.success(translate(language, 'Availability submitted!', 'Disponibilité envoyée!'))
+    # LOGIN FORM
+    with tab1:
+
+        c1, _ = st.columns((1, 2))
+        with c1:
+            shared.forms.login_form(db)
+            
+    with tab2:
+        c1, _ = st.columns((1, 2))
+        with c1:
+            shared.forms.register_user_form(db)
+    
+    with tab3:
+        c1, _ = st.columns((1, 2))
+        with c1:
+            shared.forms.forget_password_form(db)
