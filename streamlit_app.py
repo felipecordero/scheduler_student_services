@@ -7,10 +7,6 @@ import supervisors
 from firebase_admin import credentials, firestore
 from shared import crud
 
-import extra_streamlit_components as stx
-
-from time import sleep
-
 st.set_page_config(layout="wide",
                    page_title="Student Services Scheduler",
                    page_icon="📅",
