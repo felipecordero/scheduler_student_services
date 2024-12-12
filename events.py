@@ -1,21 +1,44 @@
-import firebase_admin
-import streamlit as st
-import streamlit_authenticator as stauth
-from firebase_admin import credentials, firestore
-from streamlit_authenticator import LoginError
-
 import admin
+import firebase_admin
+import shared.forms
+import streamlit as st
 import students
+import supervisors
+from firebase_admin import credentials, firestore
 from shared import crud
 
-# Authentication Stuff
-# with open('config.yaml') as file:
-#     config = yaml.load(file, Loader=SafeLoader)
+import extra_streamlit_components as stx
 
-# st.markdown(" <style> div[class^='element-container'] { padding-top: -10rem; } </style> ", unsafe_allow_html=True)
+from time import sleep
+
+st.set_page_config(layout="wide",
+                   page_title="Student Services Scheduler",
+                   page_icon="📅",
+                   menu_items={
+                            'Get Help': 'https://felipecordero.com',
+                            'About': "## With love by Felipe Cordero. **Supporting** Student Services Team!"
+                        })
+
+# Reducing whitespace on the top of the page
+st.markdown("""
+<style>
+
+.block-container
+{
+    padding-top: 3rem;
+    padding-bottom: 1rem;
+    margin-top: 0rem;
+}
+
+</style>
+""", unsafe_allow_html=True)
 
 # Interfaz de usuario
-st.title("🥳Student Services Events APP📅")
+
+col1, col2, col3, _, col_logo,  = st.columns((1.5, 0.4, 0.3, 1.5, 0.5), vertical_alignment="center")
+col1.subheader("📅 Student Services Events App")
+login_placeholder = col2.empty()
+col_logo.image("logos/logo_college.png")
 
 # Inicializar Firebase
 if not firebase_admin._apps:
@@ -24,98 +47,71 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-config = crud.get_credentials(db)
+container = st.container()
 
-# Pre-hashing all plain text passwords once
-stauth.Hasher.hash_passwords(config['credentials'])
+# # try to login from cookies
+# cookie_manager = stx.CookieManager()
 
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
+# if "valid_user" not in st.session_state:
+#     # print(st.session_state)
+#     username = cookie_manager.get(cookie="user")
+#     # sleep(0.5)
+#     password = cookie_manager.get(cookie="pass")
+#     # sleep(0.5)
+#     # print(username, password)
+#     users = crud.get_all_users(db)
+#     for user in users:
+#         if user["user"] == username:
+#             if user["password"] == str(password):
+#                 st.session_state.valid_user = True
+#                 st.session_state.username = username
+#                 st.rerun()
 
-# {
-#     'Form name':'Register new student', 
-#     'Email':'Email', 
-#     'Username':'Student Number', 
-#     'Password':'Password', 
-#     'Repeat password':'Repeat password', 
-#     'Password hint':'Password hint', 
-#     'Captcha':'Captcha', 
-#     'Register':'Register'
-# }
+# Serving each site depending on the user
+if "valid_user" in st.session_state:
+    if "valid_user":
+        if "username" in st.session_state:
+            user_info = crud.get_user(db, st.session_state.username)
+            logout_button = col3.button("logout", type="primary")
 
-# CREATE USER FORM
-def create_user_form():
-    fields = {
-        'Form name':'Register new student', 
-        'Email':'Email', 
-        'Username':'Student Number', 
-        'Password':'Password', 
-        'Repeat password':'Repeat password', 
-        'Password hint':'Password hint', 
-        'Captcha':'Captcha', 
-        'Register':'Register'
-    }
-    try:
-        email_of_registered_user, \
-        student_number, \
-        name_of_registered_user = authenticator.register_user( roles=["viewer"],
-                                                              fields=fields) # name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
-        if email_of_registered_user:
-            st.success('User registered successfully')
+            if logout_button:
+                del st.session_state.username
+                del st.session_state.valid_user
+                st.rerun()
 
-            crud.write_credentials_config_firestore(db, config)
-        
-    except Exception as e:
-        st.error(e)
+            if "admin" in user_info["role"]:
+                with container:
+                    admin.render(db, login_placeholder)
 
-# Serving each site depending on the user 
-if st.session_state['authentication_status']:
-    with st.sidebar:
-        authenticator.logout()
-        st.subheader(f"Logged in as {st.session_state["username"]}")
-    if st.session_state["username"] == "emile":
-        admin.render(db)
-    if st.session_state["roles"] == ["viewer"]:
-        students.render(db)
+            elif "supervisor" in user_info["role"]:
+                with container:
+                    supervisors.render(db, login_placeholder)
+
+            elif "student" in user_info["role"]:
+                with container:
+                    students.render(db, login_placeholder)
+
+        else:
+            st.info("Please, login or register")
+    else:
+        st.info("Please, login or register")
+
 else:
     tab1, tab2, tab3 = st.tabs(["Login", "Register", "Forgot Password"])
 
     # LOGIN FORM
     with tab1:
-        fields_login = {
-            'Form name':'Login', 
-            'Username':'Student Number', 
-            'Password':'Password', 
-            'Login':'Login', 
-            'Captcha':'Captcha'
-            }
-        try:
-            authenticator.login(fields=fields_login)
-        except LoginError as e:
-            st.error(e)
+
+        c1, _ = st.columns((1, 2))
+        with c1:
+            shared.forms.login_form(db)
+            
     with tab2:
-        create_user_form()
+        c1, _ = st.columns((1, 2))
+        with c1:
+            shared.forms.register_user_form(db)
     
     with tab3:
-        try:
-            username_of_forgotten_password, \
-            email_of_forgotten_password, \
-            new_random_password = authenticator.forgot_password()
-            if username_of_forgotten_password:
-                print(new_random_password)
-                st.success('New password to be sent securely')
-                # The developer should securely transfer the new password to the user.
-            elif not username_of_forgotten_password:
-                st.error('Username not found')
-        except Exception as e:
-            st.error(e)
-    # if st.sidebar.button("Create New User"):
-    #     with container:
-            
-
-
-
+        c1, _ = st.columns((1, 2))
+        with c1:
+            shared.forms.forget_password_form(db)

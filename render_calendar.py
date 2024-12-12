@@ -53,5 +53,7 @@ def render_calendar(eventos):
                 "weekends": True,
             }
     
-    calendar(events=calendar_events,
-            options=calendar_options)
+    c1, c2 = st.columns((2,1.5))
+    with c1:
+        calendar(events=calendar_events,
+                options=calendar_options)

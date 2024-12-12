@@ -1,13 +1,9 @@
-import datetime
-
-import dateparser
-import streamlit as st
-
 import shared
 import shared.crud
-from render_calendar import render_calendar
+import streamlit as st
 from shared import crud
 
+import event_details
 
 # Translation method
 def translate(language, en_text, fr_text):
@@ -18,7 +14,9 @@ def translate(language, en_text, fr_text):
 
 times = shared.crud.times
     
-def render(db):
+def render(db, login_placeholder):
+
+    login_placeholder.info(f"**{st.session_state.username}**")
 
     events_dict = crud.obtener_eventos(db)
 
@@ -30,20 +28,22 @@ def render(db):
 
                 events_list.append(event["nombre"])
 
-    render_calendar(events_dict)
+    # render_calendar(events_dict)
 
     # Select Language
     language = st.selectbox('Choose your language / Choisissez votre langue', ['English', 'Français'])
 
     # Tabs
 
-    tab_available_events, tab_your_events = st.tabs(["Available Events", "Your Events"])
+    tab_available_events, tab_your_events = st.tabs(["Available Events", "Events Information"])
 
     with tab_available_events:
 
+        st.subheader("Register for an event")
+
         # Event Selector:
         
-        event_selected = st.selectbox(label="Events", options=events_list)
+        event_selected = st.selectbox(label="Events", options=events_list, key="Student_role_events")
 
         # Disponibility
         st.subheader(translate(language, 
@@ -62,34 +62,49 @@ def render(db):
 
             # Days adjusteds:
 
-            days = crud.get_event_days_from_db(db, event_selected)
+            if event_selected:
 
-            for day, times in sorted(days.items()):
+                days = crud.get_event_days_from_db(db, event_selected)
 
-                days[day] = st.multiselect(
-                    translate(language, day, day), times)
+                for day, times in sorted(days.items()):
+
+                    days[day] = st.multiselect(
+                        translate(language, day, day), times)
+                    
+
+                # if st.button(translate(language, 'Submit Availability', 'Envoyer la Disponibilité')):
+                if st.form_submit_button(translate(language, 
+                                                'Submit Availability', 
+                                                'Envoyer la Disponibilité')):
+                    # if not name or not studentNumber:
+                    #     st.error(translate(language, 
+                    #                        "Please provide your Name and Student Number.", 
+                    #                        "Veuillez fournir votre Nom et Numéro d'étudiant."))
+                    # else:
+                    # name = st.session_state["name"]
+                    username = st.session_state["username"]
+                    info = days
+                    # info["name"] = name
+                    # data = {
+                    #     # "studentID": studentNumber,
+                    #     "studentID": username,
+                    #     "info": info
+                    # }
+                    crud.write_availabilty(db, event_selected, username, info)
+
+                    st.success(translate(language, 
+                                            'Availability submitted!', 
+                                            'Disponibilité envoyée!'))
                 
+    with tab_your_events:
 
-            # if st.button(translate(language, 'Submit Availability', 'Envoyer la Disponibilité')):
-            if st.form_submit_button(translate(language, 
-                                               'Submit Availability', 
-                                               'Envoyer la Disponibilité')):
-                # if not name or not studentNumber:
-                #     st.error(translate(language, 
-                #                        "Please provide your Name and Student Number.", 
-                #                        "Veuillez fournir votre Nom et Numéro d'étudiant."))
-                # else:
-                name = st.session_state["name"]
-                username = st.session_state["username"]
-                info = days
-                info["name"] = name
-                # data = {
-                #     # "studentID": studentNumber,
-                #     "studentID": username,
-                #     "info": info
-                # }
-                crud.write_availabilty(db, event_selected, username)
+        eventos = crud.obtener_eventos(db)
 
-                st.success(translate(language, 
-                                        'Availability submitted!', 
-                                        'Disponibilité envoyée!'))
+        event_list = []
+        for evento in eventos:
+            event_list.append(evento["nombre"])
+
+        # Formulario para modificar un evento
+        col1, col2 = st.columns([1, 1])
+        event_name = col1.selectbox(label="Events List", options=event_list, key="event_list_students")
+        event_details.render_details(db, event_name)

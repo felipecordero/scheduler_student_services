@@ -20,11 +20,11 @@ times = [
 ]
 
 # Inicializar Firebase
-st.cache_data
+# st.cache_data
 def get_db():
-    if not firebase_admin._apps:
-        cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
-        firebase_admin.initialize_app(cred)
+    # if not firebase_admin._apps:
+    cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
+    firebase_admin.initialize_app(cred)
 
     return firestore.client()
 
@@ -42,16 +42,28 @@ def define_days(start_date, end_date):
         days[date.date().isoformat()] = times
     return days
 
+# # Funcion para obtener el documento con las credenciales
+# @st.cache_data
+# def get_credentials(_db):
+#     creds = _db.collection('credentials').document("credentials").get().to_dict()
+#     return creds
+
 # Funcion para obtener el documento con las credenciales
 @st.cache_data
-def get_credentials(_db):
-    creds = _db.collection('credentials').document("credentials").get().to_dict()
-    return creds
+def get_user(_db, username):
+    user_info = _db.collection('users').document(username).get().to_dict()
+    return user_info
+
+@st.cache_data
+def get_all_users(_db):
+    users_info = _db.collection('users').get()
+    return [{'user': user.id, **user.to_dict()} for user in users_info]
+
 
 def write_availabilty(db, event_selected, username, info):
     doc = db.collection("eventos").document(event_selected).collection("students").document(username)
     doc.set(info)
-    st.cache_data.clear()
+    get_students_registered.clear()
 
 # Función para crear un evento
 def crear_evento(_db: firestore.client, nombre, fecha_inicio: datetime.date, duracion):
@@ -63,51 +75,77 @@ def crear_evento(_db: firestore.client, nombre, fecha_inicio: datetime.date, dur
         'fecha_inicio': start_date,
         'fecha_termino': end_date,
         'duracion': duracion,
-        'open': True,
+        'open': False,
         'days': days
     }
-    _db.collection('eventos').document(nombre).set(evento)
+    _db.collection('eventos').document(nombre).set(evento) 
     # mostrar_eventos()
     st.cache_data.clear()
 
-def write_credentials_config_firestore(_db: firestore.client, config: dict):
-    main_collection = _db.collection("credentials")
-    main_collection_doc_ref = main_collection.document("credentials")
-    main_collection_doc_ref.set(config)
-    st.cache_data.clear()
+# Función para modificar un evento
+def modificar_evento(_db: firestore.client, nombre, fecha_inicio: datetime.date, duracion, is_open: bool):
+    evento_ref = _db.collection('eventos').document(nombre)
+    start_date = datetime.datetime(fecha_inicio.year, fecha_inicio.month, fecha_inicio.day)
+    end_date = start_date + datetime.timedelta(weeks=duracion)
+    days = define_days(start_date, end_date)
+    if evento_ref.update({
+        'fecha_inicio': start_date,
+        'fecha_termino': end_date,
+        'duracion': duracion,
+        'days': days,
+        'open': is_open
+    }):
+        st.cache_data.clear()
+        return True
+        
+    return False
+
+
+
+# def write_credentials_config_firestore(_db: firestore.client, config: dict):
+#     main_collection = _db.collection("credentials")
+#     main_collection_doc_ref = main_collection.document("credentials")
+#     main_collection_doc_ref.set(config)
+#     get_credentials.clear()
+
+# def get_user_information(_db: firestore.client):
+#     creds = get_credentials(_db)["credentials"]
+#     return creds
+#     # main_collection = _db.collection("credentials")
+#     # main_collection_doc_ref = main_collection.document("credentials")
 
 # Función para eliminar un evento
 def eliminar_evento(_db: firestore.client, evento_id):
     _db.collection('eventos').document(evento_id).delete()
     st.cache_data.clear()
 
-# Función para modificar un evento
-def modificar_evento(_db: firestore.client, evento_id, nombre, fecha_inicio, duracion):
-    evento_ref = _db.collection('eventos').document(evento_id)
-    doc = evento_ref.get().to_dict()
-    if "days" not in doc:
-        start_date = dateparser.parse(doc["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
-        end_date = start_date + datetime.timedelta(weeks=doc["duracion"])
-        days = define_days(start_date, end_date)
-    else:
-        try:
-            start_date = dateparser.parse(fecha_inicio, settings={'DATE_ORDER': 'DMY'})
-        except TypeError:
-            start_date = fecha_inicio
-        end_date = start_date + datetime.timedelta(weeks=doc["duracion"])
-        days = define_days(start_date, end_date)
-    if evento_ref.update({
-        'nombre': nombre,
-        'fecha_inicio': start_date,
-        'fecha_termino': end_date,
-        'duracion': duracion,
-        'days': days
-    }):
+# Función cambiar password
+def reset_password(_db: firestore.client, username, password):
+    user_info = get_user(_db, username=username)
+    if user_info:
+        user_db_ref = _db.collection('users').document(username)
+        if user_db_ref.update({"password": password}):
+            get_all_users.clear()
+            get_user.clear()
+            return True
+        else:
+            return False
+    return False
+
+# Función para registrar un usuario
+def register_user(_db: firestore.client, firstname, lastname, email, username, password):
+    user_data = {
+        'first_name': firstname,
+        'last_name': lastname,
+        'password': password,
+        'email': email,
+        'role': ["student"]
+    }
+    if _db.collection('users').document(username).set(user_data):
         st.cache_data.clear()
         return True
-        
     return False
-    
+
 # Función para modificar un evento
 @st.cache_data
 def get_event_id_by_name(_db: firestore.client, nombre):
@@ -161,7 +199,7 @@ def get_event_days(_db: firestore.client, event_name) -> dict:
 @st.cache_data
 def get_event_days_from_db(_db, event_name):
     evento = get_event_by_name(_db, event_name)
-    # print(evento["days"])
+
     return evento["days"]
 
 # Función para recuperar todas las disponibilidades de los estudiantes
@@ -183,6 +221,8 @@ def get_students_registered(_db: firestore.client, event_name):
 # de datos Firestore
 def create_attendance_doc(_db, event_name):
 
+    event_doc = _db.collection("eventos").document(event_name)
+
     attendance_collection = _db.collection("eventos").document(event_name).collection("attendance")
         
     event_days = get_event_days_from_db(_db, event_name)
@@ -191,14 +231,22 @@ def create_attendance_doc(_db, event_name):
 
     data = get_students_registered(_db, event_name)
 
-    df = pd.DataFrame(data.values())
+    df_students = pd.DataFrame(get_all_users(_db))
+
+    df = pd.DataFrame(data)
+
+    df = df.T
+
+    df = df.reset_index().rename(columns={'index': 'student_id'})
+
+    df = df.merge(df_students, left_on="student_id", right_on="user", how="left")
 
     for day_key, day_hours in event_days.items():
         event_attendance_dict[day_key] = {}
         for hour in day_hours:
             try:
-                filtered_df = df[df[day_key].apply(lambda x: hour in x)][["name"]]
-                filtered_df["attendace"] = False
+                filtered_df = df[df[day_key].apply(lambda x: hour in x)][["student_id", "first_name", "last_name"]]
+                filtered_df["attendace"] = False # to check later
                 event_attendance_dict[day_key][hour] = filtered_df.to_json()
             except KeyError:
                 pass
@@ -209,8 +257,13 @@ def create_attendance_doc(_db, event_name):
             pass
         else:
             return False
-    st.cache_data.clear()
+    obtener_eventos.clear()
+    get_attendance_doc.clear()
+
+    event_doc.update({"open": False})
+
     return True
+
 
 # Funcion para actualizar la asistencia en Firestore
 def update_attendance_doc(_db, event_name, data):
@@ -227,7 +280,7 @@ def update_attendance_doc(_db, event_name, data):
             pass
         else:
             return False
-    st.cache_data.clear()
+    get_attendance_doc.clear()
     return True
 
 # Funcion para obtener la colección con toda la info de asistencia
@@ -242,3 +295,26 @@ def get_attendance_doc(_db, event_name):
         attendance_dict[attendance.id] = attendance.to_dict()
 
     return attendance_dict
+
+def get_all_events_list(db):
+
+    all_events_dict = obtener_eventos(db)
+    all_events_list = []
+
+    for event in all_events_dict:
+
+        all_events_list.append(event["nombre"])
+    
+    return all_events_list
+
+def get_open_events_list(db):
+            
+    all_events_dict = obtener_eventos(db)
+    open_events_list = []
+
+    for event in all_events_dict:
+        if "open" in event.keys():
+            if event["open"]:
+                open_events_list.append(event["nombre"])
+
+    return open_events_list

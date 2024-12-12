@@ -122,10 +122,15 @@ def create_complex_pdf(data):
 
 def create_student_attendance_report(student_id: str, db: firestore.client, event: str):
 
-    credentials = crud.get_credentials(db)
+    students_info = crud.get_all_users()
 
-    student_info = credentials["credentials"]["usernames"][student_id]
-    student_name = f"{student_info["first_name"]} {student_info["last_name"]}"
+    for i in students_info:
+        if i["user"] == student_id:
+
+            firstname = i["first_name"]
+            last_name = i["last_name"]
+            student_name = f"{firstname} {last_name}"
+            break
 
     pdf_buffer = BytesIO()
 
@@ -145,7 +150,9 @@ def create_student_attendance_report(student_id: str, db: firestore.client, even
         day_tabla = []
         for row in df[[day]].itertuples():
             df_filtered = pd.read_json(StringIO(row._1))
-            df_filtered = df_filtered[(df_filtered["name"] == student_name) & (df_filtered["attendace"])]
+            df_filtered = df_filtered[(df_filtered["student_id"] == student_id) & (df_filtered["attendace"])]
+
+            df_filtered = df_filtered[["student_id", "attendace"]]
 
             if not df_filtered.empty:
 
@@ -185,10 +192,6 @@ def create_student_attendance_report(student_id: str, db: firestore.client, even
     
     story.append(Paragraph(f"Student: {student_name}", styles['Heading2']))
 
-    # story.append(Paragraph(student_name))
-
-    # story.append(Paragraph("Summary", styles['Heading3']))
-
     total_hours_per_event = 0.0
 
     for hours in total_hours.values():
@@ -206,8 +209,6 @@ def create_student_attendance_report(student_id: str, db: firestore.client, even
         story.append(Paragraph(f"Hours = {float(total_hours[day])}", styles["Heading5"]))
         story.append(table)
 
-
     # Build the PDF
-    # elements = [table]
     doc.build(story)
     return pdf_buffer.getvalue()

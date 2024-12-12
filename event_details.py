@@ -3,110 +3,109 @@ import pandas as pd
 import streamlit as st
 from shared import crud
 
-# st.set_page_config(layout="wide")
-
-# cmap = plt.cm.get_cmap('RdYlGn')
-
-# Function to convert list elements to strings with newline characters
-def list_to_string(lst):
-    return '<br>'.join(lst) if isinstance(lst, list) else lst
+cmap = matplotlib.colormaps["RdYlGn"]
 
 # Method for rendering the details for the specific event
+@st.fragment
 def render_details(db, event_name):
 
-    # # Ejemplo de uso
-    # collection_name = 'week_sept_3_6'
-    data = crud.get_students_registered(db, event_name)
+    students_registered = crud.get_students_registered(db, event_name)
 
-    [print(key, info) for key, info in data.items()]
+    students_info = crud.get_all_users(db)
 
-    # Crear la lista de días con gente registrada
-    if data:
+    # Proceder si hay estudiantes registrados
+    if students_registered:
         days = []
-        for student in data.values():
-            print(student.keys())
+        for student in students_registered.values():
             days.extend(list(student.keys()))
-        # days = list(data[0].keys())
-
-            days.remove("name")
-        # days.remove("student_id")
-
         days = list(set(days))
 
-        new_data = []
+        full_df_data = []
 
-        for student in data.values():
+        for username, student in students_registered.items():
             for day in days:
                 for hour in student[day]:
-                    new_data.append({day: student["name"], "hour": hour}) 
+                    full_df_data.append({day: username, "hour": hour}) 
 
-        df = pd.DataFrame(new_data)
+        full_df = pd.DataFrame(full_df_data)
 
-        df_days = list(df.columns)
-        df_days.remove("hour")
+        # Reemplazar los id por los nombres de los estudiantes
 
-        names = set()
-        for col in df_days:
-            names.update(df[col].dropna().unique())
+        for student_data in students_info:
+            if "last_name" in student_data:
+                full_df = full_df.replace(student_data["user"], 
+                                          f"""{student_data["first_name"]} {student_data["last_name"]}""")
 
-        names = list(names)
-        names.sort()
+        # st.dataframe(full_df)
 
-        cmap = matplotlib.colormaps["RdYlGn"]
+        # other_df = full_df.merge(right=)
 
-        df_count = df.groupby("hour").count().reset_index()
-        df_count.set_index(["hour"])
+        # Convert the remaining column names to datetime objects and sort them
+        sorted_columns = sorted([col for col in full_df.columns if col != 'hour'], key=lambda x: pd.to_datetime(x))
+
+        # Separate the "hour" column
+        hour_column = full_df.pop('hour')
+
+        # Reorder the DataFrame columns
+        full_df = full_df[sorted_columns]
+
+        # Add the "hour" column back to the DataFrame
+        full_df.insert(0, 'hour', hour_column)
+
+        days_list = list(full_df.columns)
+        days_list.remove("hour")
+
+        df_count = full_df.groupby("hour").count().reset_index()
         df_count = df_count.style.background_gradient(cmap=cmap,vmin=0,vmax=5)
 
-        new_df = df.groupby("hour")[df_days].agg(lambda x: '<br>'.join(x.dropna().astype(str))).reset_index()
-        new_df.set_index("hour", inplace=True)
+        df_students_names_full = full_df.groupby("hour")[days_list].agg(lambda x: '<br>'.join(x.dropna().astype(str)))
+
+        # TABS
 
         tab1, tab2 = st.tabs(["All Students", "Specific Student"])
 
-        name = tab2.selectbox("Select One Student", options=names)
+        # TAB de todos los estudiantes
 
-        especific_student = []
-        especific_students_days = []
-        for student in data.values():
-            if student["name"] == name:
-                for day in days:
-                    if len(student[day]) > 0:
-                        especific_students_days.append(day)
-                        for hour in student[day]:
-                            especific_student.append({day: "✓", "hour": hour})
+        with tab1:
+            
+            with st.container(border=True):
+                st.subheader("Number of students per day")
+                st.write(df_count.to_html(), unsafe_allow_html=True)
+                
+            with st.container(border=True):
 
-        student_df = pd.DataFrame(especific_student, columns=["hour"].extend(especific_students_days))
+                st.subheader("Names of students per day")
 
-        tab2.write(student_df.groupby("hour")[especific_students_days].agg(lambda x: '<br>'.join(x.dropna().astype(str))).reset_index().to_html(index=False), unsafe_allow_html=True)
+                # Display the DataFrame in Streamlit with HTML line breaks rendered correctly
+                st.write(df_students_names_full.reset_index().to_html(escape=False, index=False), unsafe_allow_html=True)
+        
+                # df_students_names_full = full_df.groupby("hour")[days_list].agg(lambda x: list(x.dropna()))
 
-        # col1, col2 = tab1.columns(2)
+                # st.write(full_df.groupby("hour")[full_df_days].agg(lambda x: '\n'.join(x.dropna().astype(str))))
 
-        tab1.header("Number of people per day")
+                # st.data_editor(df_students_names_full)
+                                # column_config={
+                                #     columns[0]: st.column_config.Column(disabled=True),
+                                #     "student_id": st.column_config.Column(disabled=True),
+                                # },
+                                # hide_index=True)
 
-        tab1.write(df_count.to_html(index=False, escape=False), unsafe_allow_html=True)
+        # TAB de un solo estudiante
 
-        tab1.header("Names of people per day")
+        with tab2:
 
-        # Display the DataFrame in Streamlit with HTML line breaks rendered correctly
-        tab1.write(new_df.to_html(escape=False, index=True), unsafe_allow_html=True)
+            # Lista de nombres
 
-        tab1.dataframe(df.groupby("hour")[df_days].agg(lambda x: list(x.dropna())).reset_index().map(list_to_string))
+            names = pd.unique(full_df[days_list].stack().dropna().values.ravel())
 
-        new_df = df.groupby("hour")[df_days].agg(lambda x: list(x.dropna())).reset_index()
+            selected_student = st.selectbox("Select One Student", options=names, key="select_one_student_details")
 
-        new_df.set_index(["hour"], inplace=True)
+            student_df = full_df[full_df.eq(selected_student).any(axis=1)]
 
-        tab1.write(new_df)
+            student_df = student_df.replace(selected_student, "✓")
 
-        tab1.write(df.groupby("hour")[df_days].agg(lambda x: '\n'.join(x.dropna().astype(str))).reset_index())
-
-        # tab1.write(new_df)
-
-        # Display the dataframe for the specific user
-
-        # df_grouped = student_df.groupby("hour")[especific_students_days].agg(lambda x: '<br>'.join(x.dropna().astype(str))).reset_index()
-
-        # tab2.write(df_grouped)
+            st.write(student_df.groupby("hour").agg(lambda x: ''.join(x.dropna().astype(str))).reset_index().to_html(index=False), unsafe_allow_html=True)
 
     else:
-        st.warning("There are no students registered yet")
+        st.info("There are no students registered yet")
+
