@@ -31,7 +31,7 @@ st.markdown("""
 
 # Interfaz de usuario
 
-col1, col2, col3, _, col_logo,  = st.columns((1.5, 0.4, 0.3, 1.5, 0.5), vertical_alignment="center")
+col1, col2, col3, _, col_logo,  = st.columns((1.5, 0.4, 0.3, 0.1, 0.25), vertical_alignment="center")
 col1.subheader("📅 Student Services Events App")
 login_placeholder = col2.empty()
 col_logo.image("logos/logo_college.png")

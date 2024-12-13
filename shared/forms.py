@@ -320,3 +320,25 @@ def modificar_evento(db, event_name):
                 st.balloons()
                 sleep(2)
                 st.rerun()
+
+@st.fragment
+def mostrar_eventos(db): # Mostrar eventos
+    eventos = crud.obtener_eventos(db)
+    container = st.container()
+    if eventos:
+        df = pd.DataFrame(eventos)
+        df = df.rename(columns={'duracion': 'Duration (in weeks)', 'nombre': 'Event Name', 'fecha_inicio': 'Start date'})
+        container.dataframe(df[['Event Name', 'Start date', 'Duration (in weeks)', 'open']])
+    else:
+        container.write("There are no events.")
+
+@st.fragment
+def event_days_settings(db, event_name): # Mostrar eventos
+    eventos = crud.obtener_eventos(db)
+    container = st.container()
+    if eventos:
+        df = pd.DataFrame(eventos)
+        df = df.rename(columns={'duracion': 'Duration (in weeks)', 'nombre': 'Event Name', 'fecha_inicio': 'Start date'})
+        container.dataframe(df[['Event Name', 'Start date', 'Duration (in weeks)', 'open']])
+    else:
+        container.write("There are no events.")

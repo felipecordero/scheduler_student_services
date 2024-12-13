@@ -4,7 +4,6 @@ import datetime
 from time import sleep
 
 import event_details
-import pandas as pd
 import streamlit as st
 from firebase_admin import firestore
 from render_calendar import render_calendar
@@ -43,16 +42,7 @@ def display_pdf(file_path):
     """
     st.markdown(pdf_display, unsafe_allow_html=True)
 
-# Mostrar eventos
-def mostrar_eventos(db):
-    eventos = crud.obtener_eventos(db)
-    container = st.container()
-    if eventos:
-        df = pd.DataFrame(eventos)
-        df = df.rename(columns={'duracion': 'Duration (in weeks)', 'nombre': 'Event Name', 'fecha_inicio': 'Start date'})
-        container.dataframe(df[['Event Name', 'Start date', 'Duration (in weeks)', 'open']])
-    else:
-        container.write("There are no events.")
+
 
 # Dialog for confirming the creation of an event
 @st.dialog("Confirm New Event")
@@ -101,7 +91,7 @@ def render(db:firestore.client, login_placeholder):
     with tab_all_events:
 
         st.subheader("Events")
-        mostrar_eventos(db)
+        forms.mostrar_eventos(db)
 
         st.subheader("Calendar of Events")
         render_calendar(eventos)
@@ -111,7 +101,7 @@ def render(db:firestore.client, login_placeholder):
 
         st.subheader("Event Details")
 
-        mostrar_eventos(db)
+        # forms.mostrar_eventos(db)
 
         # Formulario para modificar un evento
         col1, col2, _ = st.columns([1, 1, 5], vertical_alignment="bottom")
@@ -119,6 +109,9 @@ def render(db:firestore.client, login_placeholder):
 
         if col2.button("Modify", type="primary"):
             forms.modificar_evento(db, event_name)
+
+
+        forms.event_days_settings(db, event_name)
 
         event_details.render_details(db, event_name)
 
@@ -143,7 +136,7 @@ def render(db:firestore.client, login_placeholder):
 
     #%% DELETE EVENT TAB
     with tab_delete_event:
-        mostrar_eventos(db)
+        forms.mostrar_eventos(db)
         with st.form("Delete Event"):
             st.subheader("Delete Event")
             col1, col2, _ = st.columns((1, 1, 5), vertical_alignment="bottom")

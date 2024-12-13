@@ -52,7 +52,7 @@ def encabezado(canvas, doc):
 #    canvas.setFont('Times-Roman',9)
     canvas.setFontSize(9)
     canvas.drawString(inch, letter[1] - 2.1 * cm, "Student Services - Schedule Report ")
-    canvas.drawImage("logos/logo.jpeg",
+    canvas.drawImage("logos/logo_college.png",
                         w - 5 * cm,
                         h - 2.8 * cm,
                         3 * cm,
