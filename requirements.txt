@@ -7,3 +7,4 @@ reportlab==4.2.5
 streamlit==1.40.2
 streamlit_calendar==1.2.0
 captcha
+streamlit-aggrid
