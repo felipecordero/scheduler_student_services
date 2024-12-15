@@ -78,14 +78,20 @@ def render(db:firestore.client, login_placeholder):
     tab_attendance_df_builder, \
     tab_attendance, \
     tab_report, \
-    student_tab = st.tabs(["All Events", 
-                        "Event Details", 
-                        "Create Event", 
-                        "Delete Event",
-                        "Attendance Table Builder",
-                        "Check Attendance",
-                        "Attendance Report",
-                        "Student Tab (optional)"])
+    users_settings, \
+    student_tab = st.tabs(
+        [
+            "All Events", 
+            "Event Details", 
+            "Create Event", 
+            "Delete Event",
+            "Attendance Table Builder",
+            "Check Attendance",
+            "Attendance Report",
+            "Users Role Settings",
+            "Student Tab (optional)"
+        ]
+    )
 
     #%% ALL EVENTS TAB
     with tab_all_events:
@@ -165,4 +171,8 @@ def render(db:firestore.client, login_placeholder):
 
     with student_tab:
         forms.register_for_an_event(db, open_events_list)
+
+    #%% Users Settings
+    with users_settings:
+        forms.role_editor(db)
 

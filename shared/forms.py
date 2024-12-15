@@ -1,5 +1,10 @@
 import random
 from time import sleep
+import re
+
+from st_aggrid import AgGrid, GridOptionsBuilder
+
+import ast
 
 import streamlit as st
 from captcha.image import ImageCaptcha
@@ -342,3 +347,116 @@ def event_days_settings(db, event_name): # Mostrar eventos
         container.dataframe(df[['Event Name', 'Start date', 'Duration (in weeks)', 'open']])
     else:
         container.write("There are no events.")
+
+@st.fragment
+def role_editor(db):
+
+    users = crud.get_all_users(db)
+
+    users_df = pd.DataFrame(users)
+
+    role_options = [['admin'], 
+                    ['supervisor'],
+                    ['student'],
+                    ['admin', 'student'], 
+                    ['supervisor', 'student'], 
+                    ['student']]
+
+    # Define the set of acceptable roles
+    acceptable_roles = ['student', 'supervisor', 'admin', 'manager']
+
+    # Create the full pattern for the list
+    list_pattern = r'\[\s*(' + r'\s*,\s*'.join([f'"{role}"' for role in acceptable_roles]) + r')\s*\]'
+
+    # Validate and convert the string representations of lists to actual lists
+    def validate_and_convert(value):
+        try:
+            return ast.literal_eval(value)
+        except (ValueError, SyntaxError):
+            return value  # or handle the error as needed
+        
+    # Custom validation function
+    def validate_roles_list(value):
+        if re.match(list_pattern, value):
+            return True
+        else:
+            return False
+
+    
+    # users_df["role"] = users_df["role"].astype(str)
+
+    # df_editor = st.data_editor(users_df,
+    #                column_config={
+    #                 "role": st.column_config.SelectboxColumn(
+    #                     "Role Definition",
+    #                     help="Define the roles",
+    #                     # validate=list_pattern,
+    #                     options=role_options, required=True
+    #                 )
+    #             },
+    #             hide_index=True,)
+
+
+    # new_df["role"] = new_df['role'].apply(validate_and_convert)
+    # # Display the DataFrame in Streamlit
+    # st.data_editor(
+    #     new_df,
+    #     column_config={
+    #         "role": st.column_config.ListColumn(
+    #             "Roles",
+    #             help="List of roles",
+    #         )
+    #     },
+    #     hide_index=True,
+    # )
+
+    users_df = users_df[["user", "first_name", "last_name", "role", "email", "password"]]
+
+    gb = GridOptionsBuilder.from_dataframe(users_df)
+    gb.configure_default_column(editable=True)
+
+    gb.configure_column(
+        "role",
+        cellEditor= 'agSelectCellEditor',
+        cellEditorParams= {
+        'values': role_options
+            }
+    )
+
+    gridOptions=gb.build()
+
+    column_defs = gridOptions["columnDefs"]
+
+    columns_to_hide = ["password", "email"]
+
+    non_editable_columns = ["user", "first_name", "last_name"]
+
+    # update the column definitions to hide the specified columns
+    for col in column_defs:
+        if col["headerName"] in columns_to_hide:
+            col["hide"] = True
+
+    # non editable columns
+    for col in column_defs:
+        if col["headerName"] in non_editable_columns:
+            col["editable"] = False
+
+    col1, col2 = st.columns((1, 2))
+    with col1:
+        response = AgGrid(users_df, gridOptions=gridOptions, height=200)
+
+    if st.button("Write changes", type="primary"):
+        confirm_role_edition(db, response.data)
+
+    st.write(response.data.to_dict())
+
+@st.dialog("Confirm role edition")
+def confirm_role_edition(db, data):
+    st.info("The roles will be updated")
+    if st.button("Confirm"):
+        if crud.write_roles(db, data=data):
+            st.success("Attendance DB Saved")
+            st.balloons()
+            sleep(2)
+            st.rerun()
+

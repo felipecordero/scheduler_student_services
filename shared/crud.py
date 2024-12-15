@@ -318,3 +318,22 @@ def get_open_events_list(db):
                 open_events_list.append(event["nombre"])
 
     return open_events_list
+
+def write_roles(db, data: pd.DataFrame):
+    user_db_ref = db.collection('users')
+    # Create a batch
+    batch = db.batch()
+
+    for user in data.itertuples():
+        # Add the update to the batch
+        doc_id = user.user
+        updated_data = {
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "role": user.role,
+            "password": user.password
+        }
+        batch.set(user_db_ref.document(doc_id), updated_data)
+
+    batch.commit()
