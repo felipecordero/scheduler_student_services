@@ -448,7 +448,7 @@ def role_editor(db):
     if st.button("Write changes", type="primary"):
         confirm_role_edition(db, response.data)
 
-    st.write(response.data.to_dict())
+    # st.write(response.data.to_dict())
 
 @st.dialog("Confirm role edition")
 def confirm_role_edition(db, data):
