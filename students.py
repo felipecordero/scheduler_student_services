@@ -1,9 +1,9 @@
+import event_details
 import shared
 import shared.crud
 import streamlit as st
 from shared import crud
 
-import event_details
 
 # Translation method
 def translate(language, en_text, fr_text):

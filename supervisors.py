@@ -1,10 +1,8 @@
+import event_details
 import shared
 import shared.crud
 import streamlit as st
-from shared import crud
-from shared import forms
-
-import event_details
+from shared import crud, forms
 
 times = shared.crud.times
     

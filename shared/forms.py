@@ -1,21 +1,15 @@
-import random
-from time import sleep
-import re
-import datetime
-
-from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode
-
 import ast
-
-import streamlit as st
-from captcha.image import ImageCaptcha
-from shared import crud, emails, passwords
-
+import datetime
+import random
+import re
 from io import StringIO
+from time import sleep
 
 import pandas as pd
-
-from shared import pdf_report
+import streamlit as st
+from captcha.image import ImageCaptcha
+from shared import crud, emails, passwords, pdf_report
+from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
 
 
 @st.fragment
@@ -25,7 +19,7 @@ def login_form(db):
         username = st.text_input("username / student id")
         password = st.text_input("password", type="password")
         container = st.empty()
-        submit =  st.form_submit_button("login")
+        submit =  st.form_submit_button("login", type="primary")
         container = st.empty()
         if submit:
             if username and password:
@@ -56,12 +50,12 @@ def register_user_form(db):
         email = st.text_input("School email", 
                               placeholder="only lcieducation.net or collegelasalle.com accounts are accepted")
         
-        captcha_input = st.text_input("captcha", key="captcha_input_register")
+        st.text_input("captcha", key="captcha_input_register")
 
         image_container = st.empty()
         image_container.image(create_captcha(st.session_state.captcha_register))
 
-        submit = st.form_submit_button("register")
+        submit = st.form_submit_button("register", type="primary")
 
         container = st.empty()
 
@@ -82,15 +76,7 @@ def register_user_form(db):
                                 image_container.image(create_captcha(st.session_state.captcha_register))
 
                     else:
-                        container.info([
-                                        username,
-                                        st.session_state.username,
-                                        captcha_input,
-                                        st.session_state.captcha_input_register, 
-                                        st.session_state.captcha_register,
-                                        "wrong captcha"
-                                        ]
-                        )
+                        container.info("wrong captcha")
                 else:
                     container.info("please use a college email account")
             else:
@@ -98,24 +84,25 @@ def register_user_form(db):
 
 @st.fragment
 def forget_password_form(db):
-    with st.form("forgot password form", clear_on_submit=True):
-
+    with st.container(border=True):
         if "captcha_text_forget" not in st.session_state:
             st.session_state.captcha_text_forget = str(random.randint(1000, 9999))
 
         st.subheader("Reset Password")
 
-        username = st.text_input("username / student id", key="username_forget")
+        st.text_input("username / student id", key="username_forget")
 
-        captcha_input = st.text_input("captcha", key="captcha_input")
+        st.text_input("captcha", key="captcha_input")
 
         image_container = st.empty()
         image_container.image(create_captcha(st.session_state.captcha_text_forget))
-        submit = st.form_submit_button("get password")
+        submit = st.button("get password", type="primary")
         container = st.empty()
         
         if submit:
             if st.session_state.username_forget and st.session_state.captcha_input:
+                username = st.session_state.username_forget
+                
                 if st.session_state.captcha_input == st.session_state.captcha_text_forget:
                     st.session_state.captcha_text_forget = str(random.randint(1000, 9999))
                     password = passwords.password_generator()
@@ -127,19 +114,9 @@ def forget_password_form(db):
                             image_container.image(create_captcha(st.session_state.captcha_text_forget))
 
                 else:
-                    container.info([
-                                    username,
-                                    st.session_state.username,
-                                    captcha_input,
-                                    st.session_state.captcha_input, 
-                                    st.session_state.captcha_text_forget,
-                                    "wrong captcha"
-                                    ]
-                    )
+                    container.warning("wrong captcha")
             else:
                 container.info("missing values")
-    # sleep(2)
-        # container.empty()
 
 def create_captcha(text):
     # generate the image of the given text

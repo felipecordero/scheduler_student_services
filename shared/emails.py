@@ -1,7 +1,8 @@
 import smtplib
+import traceback
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import traceback
+
 import streamlit as st
 
 # Email configuration

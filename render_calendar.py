@@ -1,8 +1,10 @@
-import streamlit as st
+import datetime
+
 import calendar_settings
 import dateparser
-import datetime
+import streamlit as st
 from streamlit_calendar import calendar
+
 
 @st.fragment
 def render_calendar(events):
