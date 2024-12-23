@@ -1,7 +1,5 @@
 # st.set_page_config(layout="wide")
 import base64
-import datetime
-from time import sleep
 
 import event_details
 import streamlit as st
@@ -41,18 +39,6 @@ def display_pdf(file_path):
     </div>
     """
     st.markdown(pdf_display, unsafe_allow_html=True)
-
-
-
-# Dialog for confirming the creation of an event
-@st.dialog("Confirm New Event")
-def confirm_new_event(db, nombre, fecha_inicio, duracion):
-    if st.button("Confirm"):
-        crud.crear_evento(db, nombre, fecha_inicio, duracion)
-        st.success("Event Created")
-        st.balloons()
-        sleep(2)
-        st.rerun()
 
 #%% Dialog for deleting an event
 @st.dialog("Delete Event")
@@ -113,9 +99,10 @@ def render(db:firestore.client, login_placeholder):
         col1, col2, _ = st.columns([1, 1, 5], vertical_alignment="bottom")
         event_name = col1.selectbox(label="Events List", options=all_events_list)
 
-        if col2.button("Modify", type="primary"):
-            forms.modificar_evento(db, event_name)
+        modify_event_button = col2.button("Modify", type="primary")
 
+        if modify_event_button:
+            forms.modify_event_fragment(db, event_name)
 
         forms.event_days_settings(db, event_name)
 
@@ -123,22 +110,7 @@ def render(db:firestore.client, login_placeholder):
 
     #%% CREATE EVENT TAB
     with tab_create_events:
-        col1, _ = st.columns(2)
-        with col1.form("Create New Event", clear_on_submit=True):
-            # Formulario para crear un evento
-            st.subheader("Create New Event")
-            nombre = st.text_input("Event Name") 
-            fecha_inicio = st.date_input("Start Date", datetime.date.today())
-            duracion = st.number_input("Duration (in weeks)", min_value=1, max_value=52, value=1)
-            submit_button = st.form_submit_button("Create event")
-            container = st.empty()
-            if submit_button:
-                if nombre:
-                    confirm_new_event(db, nombre, fecha_inicio, duracion)
-                else:
-                    container.info("The event has no name")
-                    sleep(2)
-                    container.empty()
+        forms.create_event_fragment(db)
 
     #%% DELETE EVENT TAB
     with tab_delete_event:
@@ -162,11 +134,9 @@ def render(db:firestore.client, login_placeholder):
 
     #%% ATENDANCE TAB
     with tab_attendance:
-
         forms.attendance_fragment(db, all_events_list)
 
     with tab_report:
-
         forms.report_generator(db)
 
     with student_tab:

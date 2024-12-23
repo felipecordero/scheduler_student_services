@@ -26,7 +26,7 @@ def render(db, login_placeholder):
         if "open" in event.keys():
             if event["open"]:
 
-                events_list.append(event["nombre"])
+                events_list.append(event["name"])
 
     # render_calendar(events_dict)
 
@@ -76,20 +76,8 @@ def render(db, login_placeholder):
                 if st.form_submit_button(translate(language, 
                                                 'Submit Availability', 
                                                 'Envoyer la Disponibilité')):
-                    # if not name or not studentNumber:
-                    #     st.error(translate(language, 
-                    #                        "Please provide your Name and Student Number.", 
-                    #                        "Veuillez fournir votre Nom et Numéro d'étudiant."))
-                    # else:
-                    # name = st.session_state["name"]
                     username = st.session_state["username"]
                     info = days
-                    # info["name"] = name
-                    # data = {
-                    #     # "studentID": studentNumber,
-                    #     "studentID": username,
-                    #     "info": info
-                    # }
                     crud.write_availabilty(db, event_selected, username, info)
 
                     st.success(translate(language, 
@@ -102,7 +90,7 @@ def render(db, login_placeholder):
 
         event_list = []
         for evento in eventos:
-            event_list.append(evento["nombre"])
+            event_list.append(evento["name"])
 
         # Formulario para modificar un evento
         col1, col2 = st.columns([1, 1])

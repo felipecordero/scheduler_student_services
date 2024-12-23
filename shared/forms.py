@@ -1,8 +1,9 @@
 import random
 from time import sleep
 import re
+import datetime
 
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, ColumnsAutoSizeMode
 
 import ast
 
@@ -150,46 +151,50 @@ def attendance_fragment(db, event_list):
     with st.container(border=True):
         st.subheader("Attendance")
         event_name = st.selectbox(label="Select the event", options=event_list)
-        event_days = crud.get_event_days_from_db(db, event_name)
-        day_selected = st.selectbox(label="Select the Day", options=sorted(event_days.keys()))
-        hour_selected = st.selectbox(label="Select the hour", options=event_days[day_selected])
+        if event_name: # There is at least one event
+            event_days = crud.get_event_days_from_db(db, event_name)
+            day_selected = st.selectbox(label="Select the Day", options=sorted(event_days.keys()))
+            hour_selected = st.selectbox(label="Select the hour", options=event_days[day_selected])
 
-        data = crud.get_attendance_doc(db, event_name)
-        df = pd.DataFrame(data)
-        df.sort_index(inplace=True)
+            data = crud.get_attendance_doc(db, event_name)
+            df = pd.DataFrame(data)
+            df.sort_index(inplace=True)
 
-        with st.form("Attendance checking"):
+            with st.form("Attendance checking"):
 
-            st.write("**Check Attendance**")
-            st.info("For every day or hour changed, you need to press **Confirm attendance**, otherwise the changes will not be saved") 
+                st.write("**Check Attendance**")
+                st.info("For every day or hour changed, you need to press **Confirm attendance**, otherwise the changes will not be saved") 
 
-            try:
+                try:
 
-                df_filtered = pd.read_json(StringIO(df.loc[hour_selected].loc[day_selected]))
+                    df_filtered = pd.read_json(StringIO(df.loc[hour_selected].loc[day_selected]))
 
-                df_editor = st.data_editor(df_filtered,
-                                        column_config={
-                                            "name": st.column_config.Column(disabled=True),
-                                            "student_id": st.column_config.Column(disabled=True),
-                                        },
-                                        hide_index=True)
+                    df_editor = st.data_editor(df_filtered,
+                                            column_config={
+                                                "name": st.column_config.Column(disabled=True),
+                                                "student_id": st.column_config.Column(disabled=True),
+                                            },
+                                            hide_index=True)
 
-                if st.form_submit_button("Confirm attendance", type="primary"):
+                    if st.form_submit_button("Confirm attendance", type="primary"):
 
 
-                    data[day_selected][hour_selected] = df_editor.to_json()
-                    
-                    if crud.update_attendance_doc(db, event_name, data):
+                        data[day_selected][hour_selected] = df_editor.to_json()
+                        
+                        if crud.update_attendance_doc(db, event_name, data):
 
-                        st.success("Attendance succesfully written in Firestore")
-                        st.balloons()
-                        sleep(2)
-                        st.rerun()
+                            st.success("Attendance succesfully written in Firestore")
+                            st.balloons()
+                            sleep(2)
+                            st.rerun()
 
-            except KeyError:
-                st.warning("No schedule yet")
-                if st.form_submit_button("Nothing to Confirm yet", disabled=True):
-                    pass
+                except KeyError:
+                    st.warning("No schedule yet")
+                    if st.form_submit_button("Nothing to Confirm yet", disabled=True):
+                        pass
+
+        else:
+            st.info("There are no events.")
 
 @st.fragment
 def report_generator(db):
@@ -302,29 +307,60 @@ def confirm_attendance_creator(db, event_name):
             sleep(2)
             st.rerun()
 
+@st.dialog("Confirm event modification")
+def confirm_event_modification(db, new_event_dict):
+    if st.button("Are you sure?"):
+        result = crud.modificar_evento(db, new_event_dict)
+        if result:
+            st.success("Event Modified!")
+            st.balloons()
+            sleep(2)
+            st.cache_data.clear()
+            st.rerun()
+
 #%% Dialog for modifying an event
-@st.dialog("Modify Event")
-def modificar_evento(db, event_name):
-    with st.form("modify event", clear_on_submit=True):
-        evento = db.collection('eventos').document(event_name).get().to_dict()
-        start_date = evento['fecha_inicio']
-        nueva_fecha_inicio = st.date_input("New start date", start_date)
+@st.fragment
+def modify_event_fragment(db, event_name):
+    with st.container(border=True):
+        st.write("**Event Modification**")
+        event_dict = crud.get_event_by_name(db, event_name)
+        start_date = event_dict['start_date']
+        new_start_date = st.date_input("New start date", start_date)
         is_open = st.selectbox("is_open", options=[False, True])
-        nueva_duracion = st.number_input("New duration (in weeks)", 
-                                                 min_value=1, 
-                                                 max_value=52, 
-                                                 value=evento['duracion']
-                                                 )
-        if st.form_submit_button("Modify Event"):
-            if crud.modificar_evento(db, 
-                                     is_open=is_open, 
-                                     duracion=nueva_duracion, 
-                                     fecha_inicio=nueva_fecha_inicio, 
-                                     nombre=event_name):
-                st.success("Event Modified!")
-                st.balloons()
-                sleep(2)
-                st.rerun()
+        duration = st.number_input("New duration (in weeks)", 
+                                                min_value=1, 
+                                                max_value=52, 
+                                                value=event_dict['duration']
+                                                )
+        end_date = new_start_date + datetime.timedelta(weeks=duration)
+        
+        days = crud.define_days(new_start_date, end_date)
+
+        data_df = {"day": days.keys(),
+                    "valid": [True] * len(days.keys())}
+        
+        df = pd.DataFrame(data_df)
+
+        st.write("**Confirm Days**")
+
+        days_editor = st.data_editor(df, key="days_editor_modify_event")
+
+        final_days = days_editor[days_editor["valid"]].values
+
+        days = {key: val for key, val in days.items() if key in final_days}
+
+        new_event_dict = {
+            "name": event_name,
+            "duration": duration,
+            "start_date": datetime.datetime.fromisoformat(new_start_date.isoformat()),
+            "end_date":  datetime.datetime.fromisoformat(end_date.isoformat()),
+            "open": is_open,
+            "days": days
+        }
+
+        if st.button("Modify Event", type="primary"):
+            confirm_event_modification(db, new_event_dict)
+
 
 @st.fragment
 def mostrar_eventos(db): # Mostrar eventos
@@ -332,7 +368,7 @@ def mostrar_eventos(db): # Mostrar eventos
     container = st.container()
     if eventos:
         df = pd.DataFrame(eventos)
-        df = df.rename(columns={'duracion': 'Duration (in weeks)', 'nombre': 'Event Name', 'fecha_inicio': 'Start date'})
+        df = df.rename(columns={'duration': 'Duration (in weeks)', 'name': 'Event Name', 'start_date': 'Start date'})
         container.dataframe(df[['Event Name', 'Start date', 'Duration (in weeks)', 'open']])
     else:
         container.write("There are no events.")
@@ -343,7 +379,7 @@ def event_days_settings(db, event_name): # Mostrar eventos
     container = st.container()
     if eventos:
         df = pd.DataFrame(eventos)
-        df = df.rename(columns={'duracion': 'Duration (in weeks)', 'nombre': 'Event Name', 'fecha_inicio': 'Start date'})
+        df = df.rename(columns={'duration': 'Duration (in weeks)', 'name': 'Event Name', 'start_date': 'Start date'})
         container.dataframe(df[['Event Name', 'Start date', 'Duration (in weeks)', 'open']])
     else:
         container.write("There are no events.")
@@ -441,9 +477,11 @@ def role_editor(db):
         if col["headerName"] in non_editable_columns:
             col["editable"] = False
 
-    col1, col2 = st.columns((1, 2))
+    col1, col2 = st.columns((1, 1))
     with col1:
-        response = AgGrid(users_df, gridOptions=gridOptions, height=200)
+        response = AgGrid(users_df, 
+                          gridOptions=gridOptions, height=200, 
+                          columns_auto_size_mode=ColumnsAutoSizeMode.FIT_ALL_COLUMNS_TO_VIEW)
 
     if st.button("Write changes", type="primary"):
         confirm_role_edition(db, response.data)
@@ -460,3 +498,63 @@ def confirm_role_edition(db, data):
             sleep(2)
             st.rerun()
 
+@st.fragment
+def create_event_fragment(db):
+    col1, _ = st.columns(2)
+
+    # Dialog for confirming the creation of an event
+    @st.dialog("Confirm New Event Creation")
+    def confirm_new_event_dialog(db, event_dict):
+        if st.button("Confirm"):
+            crud.crear_evento(db, event_dict)
+            st.success("Event Created :) ")
+            st.balloons()
+            sleep(2)
+            st.rerun(scope="fragment")
+    with col1:
+        # Formulario para crear un evento
+        st.subheader("Create New Event")
+        # Inputs
+        event_name = st.text_input("Event Name") 
+        start_date = st.date_input("Start Date", datetime.date.today())
+        duration = st.number_input("Duration (in weeks)", min_value=1, max_value=52, value=1)
+        
+        end_date = start_date + datetime.timedelta(weeks=duration)
+        end_date = end_date
+        days = crud.define_days(start_date, end_date)
+        data_df = {"day": days.keys(),
+                   "valid": [True] * len(days.keys())}
+        
+        is_open = st.checkbox("Is Open?", value=False)
+        
+        df = pd.DataFrame(data_df)
+
+        st.write("**Confirm Days**")
+        days_editor = st.data_editor(df)
+
+        final_days = days_editor[days_editor["valid"]].values
+
+        days = {key: val for key, val in days.items() if key in final_days}
+
+        submit_button = st.button("Create event", type="primary")
+
+        container = st.empty()
+
+        # build a single dictionary with all the info for the event:
+
+        event_dict = {
+            "name": event_name,
+            "duration": duration,
+            "start_date": datetime.datetime.fromisoformat(start_date.isoformat()),
+            "end_date":  datetime.datetime.fromisoformat(end_date.isoformat()),
+            "open": is_open,
+            "days": days
+        }
+
+        if submit_button:
+            if event_name:
+                confirm_new_event_dialog(db, event_dict)
+            else:
+                container.info("The event has no name")
+                sleep(2)
+                container.empty()

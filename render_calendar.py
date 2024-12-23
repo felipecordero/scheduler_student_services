@@ -5,7 +5,7 @@ import datetime
 from streamlit_calendar import calendar
 
 @st.fragment
-def render_calendar(eventos):
+def render_calendar(events):
     calendar_options = {
             "editable": "true",
             "navLinks": "true",
@@ -15,15 +15,15 @@ def render_calendar(eventos):
 
     calendar_events = []
     
-    for evento in eventos:
+    for event in events:
         try:
-            start_date = dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
+            start_date = dateparser.parse(event["start_date"], settings={'DATE_ORDER': 'DMY'})
         except TypeError:
-            start_date = evento["fecha_inicio"].date()
-        end_date = start_date + datetime.timedelta(weeks=evento["duracion"])
-        # print(str(dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})))
+            start_date = event["start_date"].date()
+        end_date = start_date + datetime.timedelta(weeks=event["duration"])
+        # print(str(dateparser.parse(evento["start_date"], settings={'DATE_ORDER': 'DMY'})))
         calendar_events.append({
-            "title": evento["nombre"],
+            "title": event["name"],
             # "start": str(start_date),
             # "end": str(end_date),
             "start": start_date.isoformat(),

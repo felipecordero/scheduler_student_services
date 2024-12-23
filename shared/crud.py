@@ -1,7 +1,6 @@
 import datetime
 from firebase_admin import firestore, credentials
 import firebase_admin
-import dateparser
 import pandas as pd
 import streamlit as st
 
@@ -29,17 +28,14 @@ def get_db():
     return firestore.client()
 
 # Funcion que retorna un diccionario con las horas para un evento
-def define_days(start_date, end_date):
+def define_days(start_date: datetime.date, end_date: datetime.date):
     # definir cada día y sus horas
     number_of_days = (end_date - start_date).days
     days = {}
 
     for day in range(number_of_days):
         date = start_date + datetime.timedelta(days=day)
-        # day_name = date.strftime('%A')
-        # day_number = date.day
-        # days[f'{day_name}_{day_number}'] = times
-        days[date.date().isoformat()] = times
+        days[date.isoformat()] = times
     return days
 
 # # Funcion para obtener el documento con las credenciales
@@ -65,40 +61,22 @@ def write_availabilty(db, event_selected, username, info):
     doc.set(info)
     get_students_registered.clear()
 
-# Función para crear un evento
-def crear_evento(_db: firestore.client, nombre, fecha_inicio: datetime.date, duracion):
-    start_date = datetime.datetime(fecha_inicio.year, fecha_inicio.month, fecha_inicio.day)
-    end_date = start_date + datetime.timedelta(weeks=duracion)
-    days = define_days(start_date, end_date)
-    evento = {
-        'nombre': nombre,
-        'fecha_inicio': start_date,
-        'fecha_termino': end_date,
-        'duracion': duracion,
-        'open': False,
-        'days': days
-    }
-    _db.collection('eventos').document(nombre).set(evento) 
+# Función para crear un evento db, nombre, start_date, end_date, duration, final_days["day"]
+def crear_evento(_db: firestore.client, event_dict):
+    _db.collection('eventos').document(event_dict["name"]).set(event_dict)
     # mostrar_eventos()
     st.cache_data.clear()
 
 # Función para modificar un evento
-def modificar_evento(_db: firestore.client, nombre, fecha_inicio: datetime.date, duracion, is_open: bool):
-    evento_ref = _db.collection('eventos').document(nombre)
-    start_date = datetime.datetime(fecha_inicio.year, fecha_inicio.month, fecha_inicio.day)
-    end_date = start_date + datetime.timedelta(weeks=duracion)
-    days = define_days(start_date, end_date)
-    if evento_ref.update({
-        'fecha_inicio': start_date,
-        'fecha_termino': end_date,
-        'duracion': duracion,
-        'days': days,
-        'open': is_open
-    }):
+def modificar_evento(_db: firestore.client, event_dict: dict):
+    evento_ref = _db.collection('eventos').document(event_dict["name"])
+    result = evento_ref.update(event_dict)
+    if result:
         st.cache_data.clear()
         return True
-        
-    return False
+    else:
+        print(result)
+        return False
 
 
 
@@ -145,22 +123,14 @@ def register_user(_db: firestore.client, firstname, lastname, email, username, p
         st.cache_data.clear()
         return True
     return False
-
-# Función para modificar un evento
-@st.cache_data
-def get_event_id_by_name(_db: firestore.client, nombre):
-    eventos = obtener_eventos(_db)
-    for evento in eventos:
-        if evento["nombre"] == nombre:
-            return evento["id"]
         
 # Función obtener un evento en base a su nombe
 @st.cache_data
-def get_event_by_name(_db: firestore.client, nombre):
-    eventos = obtener_eventos(_db)
-    for evento in eventos:
-        if evento["nombre"] == nombre:
-            return evento
+def get_event_by_name(_db: firestore.client, event_name):
+    events = obtener_eventos(_db)
+    for event in events:
+        if event["name"] == event_name:
+            return event
 
 # Función para obtener todos los eventos
 @st.cache_data
@@ -169,30 +139,30 @@ def obtener_eventos(_db: firestore.client):
     # eventos = eventos_ref.stream()
     return [{'id': evento.id, **evento.to_dict()} for evento in eventos]
 
-# Funcion para obtener una diccionario con todos los días de un evento
-# Y las horas disponibles de cada uno.
-# Por el momento, todas las horas son posibles
-@st.cache_data
-def get_event_days(_db: firestore.client, event_name) -> dict:
-    evento = get_event_by_name(_db, event_name)
-    try:
-        start_date = dateparser.parse(evento["fecha_inicio"], settings={'DATE_ORDER': 'DMY'})
-    except TypeError:
-        start_date = evento["fecha_inicio"]
+# # Funcion para obtener una diccionario con todos los días de un evento
+# # Y las horas disponibles de cada uno.
+# # Por el momento, todas las horas son posibles
+# @st.cache_data
+# def get_event_days(_db: firestore.client, event_name) -> dict:
+#     evento = get_event_by_name(_db, event_name)
+#     try:
+#         start_date = dateparser.parse(evento["start_date"], settings={'DATE_ORDER': 'DMY'})
+#     except TypeError:
+#         start_date = evento["start_date"]
 
-    end_date = start_date + datetime.timedelta(weeks=evento["duracion"])
+#     end_date = start_date + datetime.timedelta(weeks=evento["duration"])
 
-    delta = end_date - start_date
+#     delta = end_date - start_date
 
-    days = {}
+#     days = {}
 
-    for day in range(delta.days):
-        date = start_date + datetime.timedelta(days=day)
-        day_name = date.strftime('%A')
-        day_number = date.day
-        days[f'{day_name}_{day_number}'] = times
+#     for day in range(delta.days):
+#         date = start_date + datetime.timedelta(days=day)
+#         day_name = date.strftime('%A')
+#         day_number = date.day
+#         days[f'{day_name}_{day_number}'] = times
 
-    return days
+#     return days
 
 # Funcion para obtener los dias del evento y sus horas
 # desde la base de datos
@@ -303,7 +273,7 @@ def get_all_events_list(db):
 
     for event in all_events_dict:
 
-        all_events_list.append(event["nombre"])
+        all_events_list.append(event["name"])
     
     return all_events_list
 
@@ -315,7 +285,7 @@ def get_open_events_list(db):
     for event in all_events_dict:
         if "open" in event.keys():
             if event["open"]:
-                open_events_list.append(event["nombre"])
+                open_events_list.append(event["name"])
 
     return open_events_list
 
