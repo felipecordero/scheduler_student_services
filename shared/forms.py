@@ -77,7 +77,7 @@ def register_user_form(db):
                                             username=username, 
                                             password=password,
                                             email=email):
-                            if emails.send_email_with_password("correofelipecordero@gmail.com", password):
+                            if emails.send_email_with_password(email, password):
                                 container.info("user created. your password was sent to your email")
                                 image_container.image(create_captcha(st.session_state.captcha_register))
 
