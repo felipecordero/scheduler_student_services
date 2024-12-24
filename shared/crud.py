@@ -3,6 +3,7 @@ from firebase_admin import firestore, credentials
 import firebase_admin
 import pandas as pd
 import streamlit as st
+from shared import log_settings
 
 times = [
     '07:00-07:30',
@@ -21,10 +22,9 @@ times = [
 # Inicializar Firebase
 # st.cache_data
 def get_db():
-    # if not firebase_admin._apps:
-    cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
-    firebase_admin.initialize_app(cred)
-
+    if not firebase_admin._apps:
+        cred = credentials.Certificate(st.secrets["lasalleDB"].to_dict())
+        firebase_admin.initialize_app(cred)
     return firestore.client()
 
 # Funcion que retorna un diccionario con las horas para un evento
@@ -62,8 +62,13 @@ def write_availabilty(db, event_selected, username, info):
     get_students_registered.clear()
 
 # Función para crear un evento db, nombre, start_date, end_date, duration, final_days["day"]
-def crear_evento(_db: firestore.client, event_dict):
+def crear_evento(_db: firestore.client, event_dict, username):
     _db.collection('eventos').document(event_dict["name"]).set(event_dict)
+    event_name = event_dict["name"]
+    log_settings.logger.info(f"{username} created the event {event_name}", 
+                                     extra={
+                                         "user_id": username,
+                                         })
     # mostrar_eventos()
     st.cache_data.clear()
 
@@ -103,6 +108,11 @@ def reset_password(_db: firestore.client, username, password):
     if user_info:
         user_db_ref = _db.collection('users').document(username)
         if user_db_ref.update({"password": password}):
+            # log the process
+            log_settings.logger.info(f"{username} changed password", 
+                                     extra={
+                                         "user_id": username,
+                                         })
             get_all_users.clear()
             get_user.clear()
             return True
@@ -120,6 +130,11 @@ def register_user(_db: firestore.client, firstname, lastname, email, username, p
         'role': ["student"]
     }
     if _db.collection('users').document(username).set(user_data):
+        # logging
+        log_settings.logger.info(f"{username} user created", 
+                                     extra={
+                                         "user_id": username,
+                                         })
         st.cache_data.clear()
         return True
     return False

@@ -483,7 +483,7 @@ def create_event_fragment(db):
     @st.dialog("Confirm New Event Creation")
     def confirm_new_event_dialog(db, event_dict):
         if st.button("Confirm"):
-            crud.crear_evento(db, event_dict)
+            crud.crear_evento(db, event_dict, st.session_state.username)
             st.success("Event Created :) ")
             st.balloons()
             sleep(2)
