@@ -202,6 +202,18 @@ def get_students_registered(_db: firestore.client, event_name):
         collection_data[doc.id] = doc.to_dict()
     return collection_data
 
+def create_attendance_dict(db: firestore.client, event_name, data):
+    event_doc = db.collection("eventos").document(event_name).collection("new_attendance").document("new_attendance")
+    event_doc.set({"data": data})
+    get_attendance_dict.clear()
+
+@st.cache_data
+def get_attendance_dict(_db, event_name):
+    event_doc = _db.collection("eventos").document(event_name).collection("new_attendance").document("new_attendance")
+    data = event_doc.get().to_dict()
+    return data
+
+
 # Funcion para generar los dataframe con la asistencia en la base
 # de datos Firestore
 def create_attendance_doc(_db, event_name):

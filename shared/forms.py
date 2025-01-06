@@ -10,6 +10,7 @@ import streamlit as st
 from captcha.image import ImageCaptcha
 from shared import crud, emails, passwords, pdf_report
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, GridOptionsBuilder
+import json
 
 
 @st.fragment
@@ -284,6 +285,18 @@ def confirm_attendance_creator(db, event_name):
             sleep(2)
             st.rerun()
 
+@st.dialog("Finish Event Registration")
+def confirm_attendance_creator_new(db, event_name, data):
+
+    st.info("With this, the event will not accept more students to registrer")
+    st.info("It is going to be built the information to be able to take attendance")
+    if st.button("Confirm"):
+        if crud.create_attendance_dict(db, event_name, data):
+            st.success("Attendance DB Saved")
+            st.balloons()
+            sleep(2)
+            st.rerun()
+
 @st.dialog("Confirm event modification")
 def confirm_event_modification(db, new_event_dict):
     if st.button("Are you sure?"):
@@ -547,16 +560,15 @@ def where_to_stay():
     # df = pd.read_csv("horaire_3_6.csv", sep=",")
     df = pd.read_csv("shared/data/Horaire YELLOW TS H25 - Semaine 6-10.csv", sep=';', encoding = "ISO-8859-1")
 
+    days = df.columns[2:]
+
     df[df.columns[2:]] = df[df.columns[2:]].map(cleanText)
 
     df[df.columns[:2]] = df[df.columns[:2]].ffill()
     names = df[df.columns[2:]].stack().unique().tolist()
     names.sort()
-    # col1, col2 = st.columns(2)
-    # col1.image("logo.png", width = 50)
-    # col2.subheader("Welcome Team \n Schedule 3 -> 6 Sept.")
     user = st.selectbox(options = names, label = "Select User")
-    days = df.columns[2:]
+    
     day = st.selectbox(options = days, label = "Select Day")
     st.dataframe(df[["Horarie", "Position", day]][df[day] == user], hide_index=True, width=600,)
 
@@ -580,3 +592,76 @@ def where_to_stay():
 
     # Print the aggregated DataFrame
     st.write(aggregated_df)
+
+@st.fragment
+def create_attendance_dict(db):
+    all_events_list = crud.get_all_events_list(db)
+
+    df = pd.read_csv("shared/data/Horaire YELLOW TS H25 - Semaine 6-10.csv", sep=';', encoding = "ISO-8859-1")
+    df_attendance = df.dropna(how="all").ffill()
+
+    df_attendance = df_attendance.fillna(" ")
+
+    days = df.columns[2:]
+
+    for day in days:
+        df_attendance[f"{day}_attendance"] = False
+
+    data = df_attendance.to_json()
+
+    # st.write(data)
+
+    st.write(df_attendance)
+
+    with st.form("Event Attendance Confirmation"):
+
+        st.subheader("Attendance Table Builder")
+        event_name = st.selectbox(label="Select the event", options=all_events_list, key="Select the event 1")
+        # event_days = crud.get_event_days_from_db(db, event_name)
+
+        st.info("Clicking the button, means the event will not be accepting more students. Then, surpervisors or admins will be able to check the attendance")
+        if st.form_submit_button("Confirm attendance submition", type="primary"):
+            confirm_attendance_creator_new(db, event_name, data)
+
+@st.fragment
+def new_attendance(db, event_list):
+
+    def update_df():
+        st.write(st.session_state["filtered_df_data"])
+        df_attendance.update(pd.DataFrame(st.session_state["filtered_df_data"]))
+        st.session_state[f"{event_name}_attendance_info"] = df_attendance.to_dict()
+
+    event_name = st.selectbox(label="Select the event", options=event_list, key="Select the event 2")
+
+    if f"{event_name}_attendance_info" not in st.session_state:
+        data = json.loads(crud.get_attendance_dict(db, event_name=event_name)["data"])
+        st.session_state[f"{event_name}_attendance_info"] = data
+    else:
+        data = st.session_state[f"{event_name}_attendance_info"]
+
+    df_attendance = pd.DataFrame(data)
+
+    days = df_attendance.columns[2:]
+
+    day = st.selectbox(options = days, label = "Select Day")
+
+    horaries = df_attendance["Horarie"].unique().tolist()
+
+    horarie = st.selectbox(label="Select time", options=horaries)
+
+    filtered_df = df_attendance[df_attendance["Horarie"] == horarie][[day, f"{day}_attendance"]]
+
+    attendance_info = st.data_editor(filtered_df, hide_index=True)
+
+    df_attendance.update(attendance_info)
+
+    # actualizar el dataframe en session antes de guardar en la DB
+    st.session_state[f"{event_name}_attendance_info"] = df_attendance.to_dict()
+
+    if st.button(label="Save Attendance", type="primary"):
+        crud.create_attendance_dict(db, event_name, data = df_attendance.to_json())
+        del st.session_state[f"{event_name}_attendance_info"]
+        st.rerun()
+
+    st.write("**Attendance Summary**")
+    st.write(df_attendance)

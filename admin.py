@@ -130,11 +130,12 @@ def render(db:firestore.client, login_placeholder):
 
         with col1:
 
-            forms.create_attendance_df(db)
+            forms.create_attendance_dict(db)
 
     #%% ATENDANCE TAB
     with tab_attendance:
-        forms.attendance_fragment(db, all_events_list)
+        forms.new_attendance(db, all_events_list)
+        # forms.attendance_fragment(db, all_events_list)
 
     with tab_report:
         forms.report_generator(db)
