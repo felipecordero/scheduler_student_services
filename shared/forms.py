@@ -535,3 +535,48 @@ def create_event_fragment(db):
                 container.info("The event has no name")
                 sleep(2)
                 container.empty()
+
+@st.fragment
+def where_to_stay():
+    def cleanText(x: str):
+        try:
+            return x.split(".")[1].split()[0].strip()
+        except:
+            return x
+
+    # df = pd.read_csv("horaire_3_6.csv", sep=",")
+    df = pd.read_csv("shared/data/Horaire YELLOW TS H25 - Semaine 6-10.csv", sep=';', encoding = "ISO-8859-1")
+
+    df[df.columns[2:]] = df[df.columns[2:]].map(cleanText)
+
+    df[df.columns[:2]] = df[df.columns[:2]].ffill()
+    names = df[df.columns[2:]].stack().unique().tolist()
+    names.sort()
+    # col1, col2 = st.columns(2)
+    # col1.image("logo.png", width = 50)
+    # col2.subheader("Welcome Team \n Schedule 3 -> 6 Sept.")
+    user = st.selectbox(options = names, label = "Select User")
+    days = df.columns[2:]
+    day = st.selectbox(options = days, label = "Select Day")
+    st.dataframe(df[["Horarie", "Position", day]][df[day] == user], hide_index=True, width=600,)
+
+    df_aux = df[["Horarie", "Position", day]]
+    for x in days:
+        df_aux.merge(df[["Horarie", "Position", x]][df[x] == user], left_on="Horarie", right_on="Horarie", how="inner")
+
+    st.write(df_aux.groupby(["Horarie", "Position"]).agg(lambda x: ', '.join(x.dropna().astype(str))))
+
+    # Filter the DataFrame using the apply method and the any function
+    filtered_df = df[df[days].apply(lambda row: row == user, axis=1).any(axis=1)]
+
+    # st.write(filtered_df)
+
+    # Group the filtered DataFrame by the "Heure" column
+    grouped_df = filtered_df.groupby(['Horarie', "Position"])
+
+    # Perform any aggregation or transformation as needed
+    # For example, let's aggregate the data by concatenating the values in each group
+    aggregated_df = grouped_df.agg(lambda x: ', '.join(x.dropna().astype(str)))
+
+    # Print the aggregated DataFrame
+    st.write(aggregated_df)

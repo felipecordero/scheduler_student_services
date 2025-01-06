@@ -3,6 +3,7 @@ import shared
 import shared.crud
 import streamlit as st
 from shared import crud
+from shared import forms
 
 
 # Translation method
@@ -86,13 +87,15 @@ def render(db, login_placeholder):
                 
     with tab_your_events:
 
-        eventos = crud.obtener_eventos(db)
+        forms.where_to_stay()
 
-        event_list = []
-        for evento in eventos:
-            event_list.append(evento["name"])
+        # eventos = crud.obtener_eventos(db)
 
-        # Formulario para modificar un evento
-        col1, col2 = st.columns([1, 1])
-        event_name = col1.selectbox(label="Events List", options=event_list, key="event_list_students")
-        event_details.render_details(db, event_name)
+        # event_list = []
+        # for evento in eventos:
+        #     event_list.append(evento["name"])
+
+        # # Formulario para modificar un evento
+        # col1, col2 = st.columns([1, 1])
+        # event_name = col1.selectbox(label="Events List", options=event_list, key="event_list_students")
+        # event_details.render_details(db, event_name)
