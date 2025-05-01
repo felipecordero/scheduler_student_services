@@ -53,7 +53,7 @@ pip install -r requirements.txt
 ### 3. Launch the app
 
 ```bash
-streamlit run main.py
+streamlit run streamlit_app.py
 ```
 
 > ℹ️ Make sure you’re in the project folder when running the app!
@@ -76,6 +76,6 @@ Feel free to fork, star ⭐, and submit pull requests.
 ## 📬 Contact
 
 Created with ❤️ by **Felipe Cordero**  
-For questions, ideas, or just to say hi: [felipecordero.dev](https://github.com/felipecordero)
+For questions, ideas, or just to say hi: [https://github.com/felipecordero](https://github.com/felipecordero)
 
 ---

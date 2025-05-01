@@ -1,9 +1,0 @@
-dateparser==1.2.0
-firebase_admin==6.6.0
-matplotlib==3.9.2
-pandas==2.2.3
-reportlab==4.2.5
-streamlit==1.40.2
-streamlit_authenticator==0.4.1
-streamlit_calendar==1.2.0
-captcha
