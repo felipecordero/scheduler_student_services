@@ -1,143 +1,81 @@
-# Scheduler Student Services
+# 🎉 Welcome Team Scheduler
 
-**Scheduler Student Services** is a web-based application developed using [Streamlit](https://streamlit.io/), [Google Cloud Firestore](https://firebase.google.com/docs/firestore), and [Pandas](https://pandas.pydata.org/). It is designed to streamline the process for volunteer students to register their availability for the Welcome Team during the start of each academic semester.&#8203;:contentReference[oaicite:0]{index=0}
+Hey there! 👋
 
-## Features
+Welcome to the **Welcome Team Scheduler** — a Streamlit app designed to help students at **Collège LaSalle Montréal** sign up to be part of the Welcome Team, assisting new students at the beginning of each semester. 🏫🎓
 
-- **Volunteer Availability Registration**: :contentReference[oaicite:1]{index=1}
-- **Real-Time Data Storage**: :contentReference[oaicite:2]{index=2}
-- **Data Analysis**: :contentReference[oaicite:3]{index=3}
-- **User-Friendly Interface**: :contentReference[oaicite:4]{index=4}&#8203;:contentReference[oaicite:5]{index=5}
+---
 
-## Architecture Overview
+## 🚀 Purpose
 
-- **Frontend**: :contentReference[oaicite:6]{index=6}
-- **Backend**: :contentReference[oaicite:7]{index=7}
-- **Data Processing**: :contentReference[oaicite:8]{index=8}&#8203;:contentReference[oaicite:9]{index=9}
+Starting a new semester can be overwhelming for newcomers. This app makes it easy to organize helpful student volunteers who are eager to support and guide their peers during orientation week. 🤝💬
 
-## Installation
+---
 
-To run the application locally:
+## 🛠️ Features
 
-1. **Clone the Repository**:
+- 📋 **Student Registration**  
+  Students can register quickly through a user-friendly form.
 
-   ```bash
-   git clone https://github.com/felipecordero/scheduler_student_services.git
-   cd scheduler_student_services
-   ```
+- 🗓️ **Availability Selection**  
+  Volunteers can choose the days and time blocks they’re available to help.
 
-2. **Create a Virtual Environment** (optional but recommended):
+- 📊 **Admin Dashboard**  
+  Admins can view, filter, and export volunteer data and schedules.
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+- 📥 **Schedule Overview**  
+  Visual overview of selected availability for better coordination.
 
-3. **Install Dependencies**:
+- 📧 **Confirmation Emails** *(optional)*  
+  Automatic email confirmations can be enabled for volunteers.
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-4. **Configure Firestore Credentials**:
+## 💻 Getting Started
 
-   - :contentReference[oaicite:10]{index=10}
-   - :contentReference[oaicite:11]{index=11}
-   - :contentReference[oaicite:12]{index=12}&#8203;:contentReference[oaicite:13]{index=13}
+Want to run it locally? It's super easy! 😄
 
-     ```toml
-     [firebase]
-     type = "service_account"
-     project_id = "your-project-id"
-     private_key_id = "your-private-key-id"
-     private_key = "your-private-key"
-     client_email = "your-client-email"
-     client_id = "your-client-id"
-     auth_uri = "https://accounts.google.com/o/oauth2/auth"
-     token_uri = "https://oauth2.googleapis.com/token"
-     auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
-     client_x509_cert_url = "your-client-x509-cert-url"
-     ```
+### 1. Clone the repo
 
-   - :contentReference[oaicite:14]{index=14}&#8203;:contentReference[oaicite:15]{index=15}
+```bash
+git clone https://github.com/felipecordero/scheduler_student_services.git
+cd scheduler_student_services
+```
 
-5. **Run the Application**:
+### 2. Install dependencies
 
-   ```bash
-   streamlit run app.py
-   ```
+Make sure you have Python 3.8+ and run:
 
-   Access the application at `http://localhost:8501` in your web browser.
+```bash
+pip install -r requirements.txt
+```
 
-## Usage
+### 3. Launch the app
 
-- **Volunteers**:
-  - :contentReference[oaicite:16]{index=16}
-  - :contentReference[oaicite:17]{index=17}
-  - :contentReference[oaicite:18]{index=18}
-  - :contentReference[oaicite:19]{index=19}&#8203;:contentReference[oaicite:20]{index=20}
+```bash
+streamlit run main.py
+```
 
-- **Administrators**:
-  - :contentReference[oaicite:21]{index=21}
-  - :contentReference[oaicite:22]{index=22}
-  - :contentReference[oaicite:23]{index=23}&#8203;:contentReference[oaicite:24]{index=24}
+> ℹ️ Make sure you’re in the project folder when running the app!
 
-## Deployment
+---
 
-:contentReference[oaicite:25]{index=25}&#8203;:contentReference[oaicite:26]{index=26}
+## 🙏 Special Thanks
 
-1. **Push the Repository to GitHub**:
+A big THANK YOU to **Collège LaSalle Montréal** for the support and encouragement to build this project. 💙
 
-   Ensure your latest code is committed and pushed to a GitHub repository.
+---
 
-2. **Set Up Streamlit Cloud**:
+## 🤝 Contributing
 
-   - :contentReference[oaicite:27]{index=27}
-   - :contentReference[oaicite:28]{index=28}
-   - :contentReference[oaicite:29]{index=29}&#8203;:contentReference[oaicite:30]{index=30}
+This is a community-friendly project!  
+Feel free to fork, star ⭐, and submit pull requests.
 
-3. **Configure Secrets**:
+---
 
-   - :contentReference[oaicite:31]{index=31}
-   - :contentReference[oaicite:32]{index=32}&#8203;:contentReference[oaicite:33]{index=33}
+## 📬 Contact
 
-4. **Deploy**:
+Created with ❤️ by **Felipe Cordero**  
+For questions, ideas, or just to say hi: [felipecordero.dev](https://github.com/felipecordero)
 
-   Click "Deploy" to launch your application.
-
-## Contributing
-
-:contentReference[oaicite:34]{index=34}&#8203;:contentReference[oaicite:35]{index=35}
-
-1. **Fork the Repository**:
-
-   Click on "Fork" at the top right of the repository page.
-
-2. **Create a New Branch**:
-
-   ```bash
-   git checkout -b feature/YourFeatureName
-   ```
-
-3. **Make Your Changes**:
-
-   Implement your feature or fix.
-
-4. **Commit and Push**:
-
-   ```bash
-   git commit -m "Add your message here"
-   git push origin feature/YourFeatureName
-   ```
-
-5. **Submit a Pull Request**:
-
-   Open a pull request to the main repository's `main` branch.
-
-## License
-
-:contentReference[oaicite:36]{index=36}&#8203;:contentReference[oaicite:37]{index=37}
-
-## Acknowledgments
-
-:contentReference[oaicite:38]{index=38}&#8203;:contentReference[oaicite:39]{index=39}
+---
